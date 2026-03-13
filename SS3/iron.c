@@ -1,0 +1,175 @@
+#include "iron.h"
+
+#include "acquisition.h"
+#include "board.h"
+#include "configuration.h"
+#include "heat.h"
+#include "main.h"
+#include "tick.h"
+#include "tip.h"
+#include "util.h"
+
+/*********************************************************************************************************************
+ *                                                                                                                   *
+ *                                                 CONSTANTS                                                         *
+ *                                                                                                                   *
+ *********************************************************************************************************************/
+
+static const int TIP_CHANGE_WAIT_DELAY = 1000;
+static const int IRON_HEAT_BASE = 100;
+static const int IRON_DIFF_FACTOR = 1; // 1° diff == 1%
+
+/*********************************************************************************************************************
+ *                                                                                                                   *
+ *                                                   DATA                                                            *
+ *                                                                                                                   *
+ *********************************************************************************************************************/
+
+bool right_heat;
+bool left_heat;
+int right_duty;
+int left_duty;
+
+static int left_acc;
+static int right_acc;
+static timer_t tip_type_change_timer;
+static TipType previous_tip_type;
+
+static volatile uint32_t current_sw_state;
+static volatile uint32_t next_sw_state;
+static volatile bool next_set;
+
+/*********************************************************************************************************************
+ *                                                                                                                   *
+ *                                                 FUNCTIONS                                                         *
+ *                                                                                                                   *
+ *********************************************************************************************************************/
+
+static int iron_temperature_to_heat(int temperature) {
+  int temp_diff = MAX(0, heat_setpoint - temperature);
+  int max_heat = IRON_HEAT_BASE * max_duty / DUTY_BASE;
+  return MIN(temp_diff * IRON_DIFF_FACTOR, max_heat);
+}
+
+static bool iron_can_heat(void) {
+  // Do nothing if there is no tip
+  if (tip_type == TIP_TYPE_NC) {
+    return false;
+  }
+
+  // Wait few time (and stabilisation) before heating
+  if (timer_is_running(&tip_type_change_timer, true)) {
+    return false;
+  }
+
+  return true;
+}
+
+static bool iron_should_heat(int *pAcc, int duty) {
+  *pAcc += duty;
+
+  if (*pAcc < IRON_HEAT_BASE) {
+    return false;
+  } else {
+    *pAcc -= IRON_HEAT_BASE;
+    return true;
+  }
+}
+
+void iron_init(void) {
+  left_acc = right_acc = 0;
+  previous_tip_type = tip_type;
+
+  right_heat = left_heat = 0;
+  right_duty = left_duty = 0;
+
+  next_sw_state = current_sw_state = 0;
+  next_set = false;
+
+  timer_init(&tip_type_change_timer);
+}
+
+void iron_loop(void) {
+  NVIC_EnableIRQ(PowerProtection_INT_IRQN);
+
+  if (!new_acquisition) {
+    return;
+  }
+
+  // Detect tip_type changes
+  if (previous_tip_type != tip_type) {
+    previous_tip_type = tip_type;
+    timer_start(&tip_type_change_timer, TIP_CHANGE_WAIT_DELAY, true);
+  }
+
+  // Check if we can heat
+  uint32_t switches = 0;
+  if (iron_can_heat()) {
+    right_duty = iron_temperature_to_heat(right_temperature);
+    left_duty = iron_temperature_to_heat(right_temperature);
+    right_heat = iron_should_heat(&right_acc, right_duty);
+    left_heat = iron_should_heat(&left_acc, left_duty);
+
+    if (right_heat) {
+      if (tip_type == TIP_TYPE_WMRP || tip_type == TIP_TYPE_WMRT) {
+        switches |= Switches_R12_PIN;
+      } else if (tip_type == TIP_TYPE_WMUP) {
+        switches |= Switches_R24_PIN;
+      } else {
+        right_duty = 0;
+        right_acc = 0;
+        right_heat = false;
+      }
+    }
+
+    if (left_heat) {
+      if (tip_type == TIP_TYPE_WMRT) {
+        switches |= Switches_L12_PIN;
+      } else {
+        left_heat = 0;
+        left_acc = 0;
+        left_heat = false;
+      }
+    }
+  } else {
+    right_acc = 0;
+    left_acc = 0;
+    right_heat = false;
+
+    right_duty = 0;
+    left_duty = 0;
+    left_heat = false;
+  }
+
+  // Will set the switches at next trigger
+  next_sw_state = switches;
+  next_set = true;
+}
+
+bool iron_is_standby(void) { return current_sw_state == 0 && next_set && next_sw_state == 0; }
+
+void iron_set_output(uint32_t value) {
+  current_sw_state = value;
+  DL_GPIO_writePinsVal(Switches_PORT, Switches_R24_PIN | Switches_R12_PIN | Switches_L24_PIN | Switches_L12_PIN, value);
+}
+
+void iron_trigger(void) {
+  if (!next_set) {
+    return;
+  }
+  next_set = false;
+
+#if 0
+  iron_set_output(next_sw_state);
+#endif
+
+#ifndef NO_WDG
+  DL_WWDT_restart(PowerProtection_INST);
+#endif
+}
+
+void PowerProtection_IRQHandler(void) {
+  if (DL_WWDT_getPendingInterrupt(PowerProtection_INST)) {
+    ERROR_HANDLER();
+  }
+}
