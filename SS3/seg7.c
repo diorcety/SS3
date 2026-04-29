@@ -312,15 +312,15 @@ void update_display(void) {
       display[3] |= _POINT;
     }
     if (left_heat) {
-      display[2] |= _POINT;
+      display[0] |= _POINT;
     }
     if (reed_state == REED_STATE_CLOSED) {
-      display[4] |= _COLON;
+      display[1] |= _POINT;
+    }
 
-      // Blink when it is in setback state
-      if (heat_state == HEAT_STATE_SETBACK && (systick_counter % SEG7_BLINK_DELAY) < (SEG7_BLINK_DELAY / 2)) {
-        display[4] &= ~_COLON;
-      }
+    // Blink when not in normal state
+    if (heat_state != HEAT_STATE_NORMAL && (systick_counter % SEG7_BLINK_DELAY) < (SEG7_BLINK_DELAY / 2)) {
+      display[4] |= _COLON;
     }
     break;
 
