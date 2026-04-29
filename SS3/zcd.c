@@ -4,6 +4,7 @@
 #include "board.h"
 #include "iron.h"
 #include "tick.h"
+#include "util.h"
 
 /*********************************************************************************************************************
  *                                                                                                                   *
@@ -24,7 +25,7 @@ static volatile uint32_t zcd_current_tick;
 void zcd_init(void) {
   main_period = 0;
   zcd_previous_tick = zcd_current_tick = systick_get();
-  DL_COMP_clearInterruptStatus(ZCD_INST, DL_COMP_INTERRUPT_OUTPUT_EDGE);
+  DL_COMP_clearInterruptStatus(ZCD_INST, DL_COMP_INTERRUPT_OUTPUT_EDGE | DL_COMP_INTERRUPT_OUTPUT_EDGE);
   NVIC_ClearPendingIRQ(ZCD_INST_INT_IRQN);
 }
 
@@ -38,7 +39,7 @@ void zcd_loop(void) {
 }
 
 void ZCD_INST_IRQHandler(void) {
-  if (DL_COMP_getPendingInterrupt(ZCD_INST) == DL_COMP_INTERRUPT_OUTPUT_EDGE) {
+  if (DL_COMP_getPendingInterrupt(ZCD_INST) & (DL_COMP_INTERRUPT_OUTPUT_EDGE | DL_COMP_INTERRUPT_OUTPUT_EDGE_INV)) {
     zcd_current_tick = systick_get();
     iron_trigger();
     acquisition_trigger();
