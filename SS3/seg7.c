@@ -299,7 +299,7 @@ void update_display(void) {
     } else if (tip_type == TIP_TYPE_NC) {
       display_text(nc);
     } else if (timer_is_running(&current_setpoint_change_timer, true)) {
-      display_number(temp_unit(), setpoint);
+      display_number(temp_unit(), heat_setpoint);
     } else if (tip_type != TIP_TYPE_WMRT) {
       int right_temperature_filtred = IIR_FILTER_GET(RIGHT_TEMPERATURE_IIR_WINDOW, right_temperature_acc);
       display_number(temp_unit(), right_temperature_filtred);
