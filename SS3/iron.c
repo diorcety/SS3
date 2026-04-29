@@ -106,7 +106,7 @@ void iron_loop(void) {
   uint32_t switches = 0;
   if (iron_can_heat()) {
     right_duty = iron_temperature_to_heat(right_temperature);
-    left_duty = iron_temperature_to_heat(right_temperature);
+    left_duty = iron_temperature_to_heat(left_temperature);
     right_heat = iron_should_heat(&right_acc, right_duty);
     left_heat = iron_should_heat(&left_acc, left_duty);
 
