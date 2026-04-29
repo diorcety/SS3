@@ -159,9 +159,7 @@ void iron_trigger(void) {
   }
   next_set = false;
 
-#if 0
   iron_set_output(next_sw_state);
-#endif
 
 #ifndef NO_WDG
   DL_WWDT_restart(PowerProtection_INST);
