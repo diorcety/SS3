@@ -22,6 +22,7 @@ const GPIO1         = GPIO.addInstance();
 const GPIO2         = GPIO.addInstance();
 const GPIO3         = GPIO.addInstance();
 const GPIO4         = GPIO.addInstance();
+const MATHACL       = scripting.addModule("/ti/driverlib/MATHACL");
 const OPA           = scripting.addModule("/ti/driverlib/OPA", {}, false);
 const OPA1          = OPA.addInstance();
 const OPA2          = OPA.addInstance();

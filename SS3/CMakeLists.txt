@@ -75,6 +75,7 @@ target_compile_options(SS3 PRIVATE
     -mfloat-abi=soft
     -mlittle-endian
     -mthumb
+    -mmathacl
 
     @$<TARGET_PROPERTY:${SYSCONFIG_TARGET},SYSCONFIG_GEN_COMPILER_OPTS>
 )
