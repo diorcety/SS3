@@ -51,7 +51,7 @@ typedef enum {
   DISPLAY_MODE_F,
   DISPLAY_MODE_NUM,
   DISPLAY_MODE_REF,
-  DISPLAY_MODE_FREQ,
+  DISPLAY_MODE_VERSION,
 } DisplayMode;
 
 // #define SEG7_COMMON_CATHODE
@@ -246,28 +246,36 @@ void display_number(DisplayMode display_mode, int num) {
     break;
   case DISPLAY_MODE_NUM:
   case DISPLAY_MODE_REF:
-  case DISPLAY_MODE_FREQ:
+  case DISPLAY_MODE_VERSION:
     display[4] = _SPACE;
     j = 3;
     break;
   }
 
   int temp = abs(num);
+  bool has_sign = false;
 
-  display[j] = hex_table[temp % 10];
-  while (j > 0) {
-    j--;
-    if (j == 0 && (display_mode == DISPLAY_MODE_REF || display_mode == DISPLAY_MODE_FREQ))
-      display[j] = hex_table[(temp / 10) % 10] | _POINT;
-    else if ((temp / 10) == 0 && num >= 0)
-      display[j] = _SPACE;
-    else if ((temp / 10) == 0 && temp != 0 && num < 0)
-      display[j] = _MINUS;
-    else if (temp == 0 && num < 0)
-      display[j] = _SPACE;
-    else
-      display[j] = hex_table[(temp / 10) % 10];
+  while (j >= 0) {
+    if (temp == 0 && (display_mode != DISPLAY_MODE_REF && display_mode != DISPLAY_MODE_VERSION)) {
+      if (has_sign) {
+        display[j] = _SPACE;
+      } else {
+        display[j] = (num < 0) ? _MINUS : _SPACE;
+        has_sign = true;
+      }
+    } else {
+      display[j] = hex_table[temp % 10];
+    }
+
     temp /= 10;
+    j--;
+  }
+
+  if (display_mode == DISPLAY_MODE_REF) {
+    display[0] |= _POINT;
+  }
+  if (display_mode == DISPLAY_MODE_VERSION) {
+    display[1] |= _POINT;
   }
 }
 
@@ -394,7 +402,7 @@ void update_display(void) {
 
   case DISPLAY_STATE_SHOW_FREQUENCY: {
     int main_frequency = (int)((1000.0f / 2.0f) / (float)IIR_FILTER_GET(MAIN_PERIOD_IIR_WINDOW, main_period_acc));
-    display_number(DISPLAY_MODE_FREQ, main_frequency);
+    display_number(DISPLAY_MODE_NUM, main_frequency);
   } break;
 
   case DISPLAY_STATE_SHOW_TC_1_READING:
@@ -434,7 +442,7 @@ void update_display(void) {
     break;
 
   case DISPLAY_STATE_SHOW_FW_VERSION:
-    display_number(DISPLAY_MODE_REF, FW_VERSION);
+    display_number(DISPLAY_MODE_VERSION, FW_VERSION);
     break;
   }
 }
