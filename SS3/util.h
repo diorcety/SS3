@@ -15,8 +15,9 @@
 #define MAX(a, b) _Generic((a), int: max_int)(a, b)
 #define ROUND(t, x) ((t)((x) + 0.5f))
 
-#define IIR_FILTER_ADD(window, acc, value) ((acc) = ((acc) + ((value) * (window)) - ((acc) / (window))))
-#define IIR_FILTER_GET(window, acc) ((acc) / ((window) * (window)))
+#define IIR_FILTER_ADD(window, acc, value)                                                                             \
+  ((acc) = ((acc) + ((value) * (window)) - (((acc) + ((window) / 2)) / (window))))
+#define IIR_FILTER_GET(window, acc) (((acc) + (((window) * (window)) / 2)) / ((window) * (window)))
 
 //
 // Arrays

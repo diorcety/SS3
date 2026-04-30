@@ -43,8 +43,11 @@ static const int SPI_SPEED = SPI_INPUT_CLOCK / (2 * SPI_OUTPUT_BIT_RATE) - 1;
 static const int MAIN_PERIOD_IIR_WINDOW = 8;
 static const int LEFT_TEMPERATURE_IIR_WINDOW = 8;
 static const int RIGHT_TEMPERATURE_IIR_WINDOW = 8;
+
 static const int SEG7_SETPOINT_DELAY = 1000;
 static const int SEG7_BLINK_DELAY = 1028;
+static const int SEG7_TEMPERATURE_SLOW_UPDATE_MS = 1000;
+static const int SEG7_TEMPERATURE_SLOW_THRESHOLD_DEG = 2;
 
 typedef enum {
   DISPLAY_MODE_C,
@@ -180,7 +183,10 @@ static int previous_setpoint;
 
 static int main_period_acc;
 static int right_temperature_acc;
+static int right_temperature_filtred;
 static int left_temperature_acc;
+static int left_temperature_filtred;
+static uint32_t previous_temperature_update;
 
 static uint8_t display[5];
 static uint8_t current_index;
@@ -301,11 +307,8 @@ void update_display(void) {
     } else if (timer_is_running(&current_setpoint_change_timer, true)) {
       display_number(temp_unit(), heat_setpoint);
     } else if (tip_type != TIP_TYPE_WMRT) {
-      int right_temperature_filtred = IIR_FILTER_GET(RIGHT_TEMPERATURE_IIR_WINDOW, right_temperature_acc);
       display_number(temp_unit(), right_temperature_filtred);
     } else {
-      int right_temperature_filtred = IIR_FILTER_GET(RIGHT_TEMPERATURE_IIR_WINDOW, right_temperature_acc);
-      int left_temperature_filtred = IIR_FILTER_GET(LEFT_TEMPERATURE_IIR_WINDOW, left_temperature_acc);
       display_number(temp_unit(), (left_temperature_filtred + right_temperature_filtred) / 2);
     }
     if (right_heat) {
@@ -456,6 +459,9 @@ void seg7_init(void) {
   previous_setpoint = heat_setpoint;
   current_index = 0;
   main_period_acc = right_temperature_acc = left_temperature_acc = 0;
+  right_temperature_filtred = 0;
+  left_temperature_filtred = 0;
+  previous_temperature_update = systick_get();
   display_text(nc);
 
   SPI_0_INST->CLKDIV = SPI_PRESCALER;
@@ -489,6 +495,19 @@ void seg7_loop(void) {
     IIR_FILTER_ADD(MAIN_PERIOD_IIR_WINDOW, main_period_acc, main_period);
     IIR_FILTER_ADD(RIGHT_TEMPERATURE_IIR_WINDOW, right_temperature_acc, right_temperature);
     IIR_FILTER_ADD(LEFT_TEMPERATURE_IIR_WINDOW, left_temperature_acc, left_temperature);
+
+    // Get filtred value
+    int tmp_right_temperature_filtred = IIR_FILTER_GET(RIGHT_TEMPERATURE_IIR_WINDOW, right_temperature_acc);
+    int tmp_left_temperature_filtred = IIR_FILTER_GET(LEFT_TEMPERATURE_IIR_WINDOW, left_temperature_acc);
+
+    // Only update above threshold or after some delay: avoid flikering
+    if (abs(tmp_right_temperature_filtred - right_temperature_filtred) >= SEG7_TEMPERATURE_SLOW_THRESHOLD_DEG ||
+        abs(tmp_left_temperature_filtred - left_temperature_filtred) >= SEG7_TEMPERATURE_SLOW_THRESHOLD_DEG ||
+        systick_elapsed(previous_temperature_update, SEG7_TEMPERATURE_SLOW_UPDATE_MS)) {
+      right_temperature_filtred = tmp_right_temperature_filtred;
+      left_temperature_filtred = tmp_left_temperature_filtred;
+      previous_temperature_update = systick_get();
+    }
   }
 
   //
