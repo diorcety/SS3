@@ -16,8 +16,8 @@
  *                                                                                                                   *
  *********************************************************************************************************************/
 
-#define TC1A_MEDIAN_FILTER UINT16_2
-#define TC2A_MEDIAN_FILTER UINT16_2
+#define TC1A_MEDIAN_FILTER UINT16_8
+#define TC2A_MEDIAN_FILTER UINT16_8
 #define TC1_MEDIAN_FILTER UINT16_16
 #define TC2_MEDIAN_FILTER UINT16_16
 
@@ -27,7 +27,7 @@
  *                                                                                                                   *
  *********************************************************************************************************************/
 
-MEDIAN_FILTER_DEC_NDEF_TYPE(UINT16_2, uint16_t, 2)
+MEDIAN_FILTER_DEC_NDEF_TYPE(UINT16_8, uint16_t, 8)
 MEDIAN_FILTER_DEC_NDEF_TYPE(UINT16_16, uint16_t, 16)
 
 /*********************************************************************************************************************
