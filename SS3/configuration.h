@@ -23,7 +23,7 @@ static const int REFERENCE_DEFAULT = 2500;
 static const int STEP_SIZE_DEFAULT = 5;
 static const int TEMPERATURE_UNIT_DEFAULT = 0;
 static const int POOR_MODE_DEFAULT = 0;
-static const int MAX_DUTY_DEFAULT = 40;  // 40%
+static const int MAX_DUTY_DEFAULT = 45;  // 45%
 static const int IDLE_DUTY_DEFAULT = 20; // Idle detection from duty cycle off as default
 
 // Assign sane / safe limits to the above parameters

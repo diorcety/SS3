@@ -3,6 +3,7 @@
 #include "configuration.h"
 #include "heat.h"
 #include "tip.h"
+#include "util.h"
 
 #include <stdlib.h>
 
@@ -173,21 +174,15 @@ static DisplayState st_main_event(Event event) {
   case EVENT_LONG_PRESS:
     return st_display_change(DISPLAY_STATE_MAIN_MENU);
   case EVENT_LEFT:
-    if (tip_type != TIP_TYPE_NC && heat_state == HEAT_STATE_NORMAL) {
-      setpoint -= step_size;
-      if (setpoint < SETPOINT_MIN)
-        setpoint = SETPOINT_MIN;
+    if (heat_state == HEAT_STATE_NORMAL) {
+      heat_setpoint = setpoint = MAX(setpoint - step_size, SETPOINT_MIN);
       configuration_save();
-      heat_setpoint = setpoint;
     }
     break;
   case EVENT_RIGHT:
-    if (tip_type != TIP_TYPE_NC && heat_state == HEAT_STATE_NORMAL) {
-      setpoint += step_size;
-      if (setpoint > SETPOINT_MAX)
-        setpoint = SETPOINT_MAX;
+    if (heat_state == HEAT_STATE_NORMAL) {
+      heat_setpoint = setpoint = MIN(setpoint + step_size, SETPOINT_MAX);
       configuration_save();
-      heat_setpoint = setpoint;
     }
     break;
   default:
