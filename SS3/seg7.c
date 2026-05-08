@@ -503,10 +503,14 @@ void seg7_init(void) {
   number_force_update = true;
   display_text(nc);
 
+  // Reconfigure SPI to match refresh rate and 16 bits frame
+  DL_SPI_disable(SPI_0_INST);
   SPI_0_INST->CLKDIV = SPI_PRESCALER;
   _Static_assert(SPI_SPEED >= 0 && SPI_SPEED <= SPI_CLKCTL_SCR_MASK,
                  "SPI_SPEED out of range (must be between 0 and" TOSTRING(SPI_CLKCTL_SCR_MASK) ")");
   DL_SPI_setBitRateSerialClockDivider(SPI_0_INST, SPI_SPEED);
+  DL_SPI_setDataSize(SPI_0_INST, DL_SPI_DATA_SIZE_16);
+  DL_SPI_enable(SPI_0_INST);
 }
 
 void seg7_send(void) {
@@ -590,7 +594,7 @@ void seg7_loop(void) {
   //
 }
 
-void SPI_0_INST_IRQHandler(void) {
+void seg7_INST_IRQHandler(void) {
   switch (DL_SPI_getPendingInterrupt(SPI_0_INST)) {
   case DL_SPI_IIDX_IDLE:
     trigger = true;

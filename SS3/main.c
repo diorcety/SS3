@@ -7,7 +7,12 @@
 #include "display.h"
 #include "heat.h"
 #include "iron.h"
+#if defined(USE_SEG7)
 #include "seg7.h"
+#endif
+#if defined(USE_ST7789)
+#include "st7789.h"
+#endif
 #include "tick.h"
 #include "tip.h"
 #include "zcd.h"
@@ -38,6 +43,9 @@ static void init(void) {
 #if defined(USE_SEG7)
   seg7_init();
 #endif
+#if defined(USE_ST7789)
+  st7789_init();
+#endif
 }
 
 static void loop(void) {
@@ -60,6 +68,9 @@ static void loop(void) {
   iron_loop();
 #if defined(USE_SEG7)
   seg7_loop();
+#endif
+#if defined(USE_ST7789)
+  st7789_loop();
 #endif
 
   // Don't freeze during a tricky moment
@@ -102,6 +113,21 @@ void GROUP1_IRQHandler(void) {
   Buttons_INST_IRQHandler();
 }
 
+#if defined(USE_SEG7)
+void seg7_INST_IRQHandler(void);
+#endif
+#if defined(USE_ST7789)
+void st7789_INST_IRQHandler(void);
+#endif
+void SPI_0_INST_IRQHandler(void) {
+#if defined(USE_SEG7)
+  seg7_INST_IRQHandler();
+#elif defined(USE_ST7789)
+  st7789_INST_IRQHandler();
+#else
+  ERROR_HANDLER();
+#endif
+}
 //
 // Error handlers
 //
@@ -127,3 +153,5 @@ void SYSCFG_DL_Watchdog_init(void) {}
 
 void SYSCFG_DL_PowerProtection_init(void) {}
 #endif
+
+void __cxa_pure_virtual(void) { ERROR_HANDLER(); }

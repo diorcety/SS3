@@ -232,7 +232,6 @@ SPI1.interruptPriority          = "3";
 SPI1.enableDMAEvent1            = false;
 SPI1.rxFifoThreshold            = "DL_SPI_RX_FIFO_LEVEL_ONE_FRAME";
 SPI1.txFifoThreshold            = "DL_SPI_TX_FIFO_LEVEL_EMPTY";
-SPI1.dataSize                   = 16;
 SPI1.sclkPinConfig.$name        = "ti_driverlib_gpio_GPIOPinGeneric3";
 SPI1.mosiPinConfig.$name        = "ti_driverlib_gpio_GPIOPinGeneric4";
 SPI1.misoPinConfig.$name        = "ti_driverlib_gpio_GPIOPinGeneric5";

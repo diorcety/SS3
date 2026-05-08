@@ -33,8 +33,9 @@
 *****************************************************************************/
 -uinterruptVectors
 --stack_size=1024
+--heap_size=0
 
-#define FLASH_SIZE  0x00008000
+#define FLASH_SIZE  0x00020000
 #define EEPROM_SIZE 0x00001000
 #define RAM_SIZE    0x00008000
 
