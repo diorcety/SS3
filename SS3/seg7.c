@@ -305,10 +305,10 @@ void update_display(void) {
       display_text(stby);
     } else if (heat_state == HEAT_STATE_ERROR) {
       display_text(err);
-    } else if (tip_type == TIP_TYPE_NC) {
-      display_text(nc);
     } else if (timer_is_running(&current_setpoint_change_timer, true)) {
       display_number(temp_unit(), heat_setpoint);
+    } else if (tip_type == TIP_TYPE_NC) {
+      display_text(nc);
     } else if (tip_type != TIP_TYPE_WMRT) {
       display_number(temp_unit(), right_temperature_filtred);
     } else {
