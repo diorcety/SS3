@@ -13,6 +13,7 @@ typedef enum {
   HEAT_STATE_NORMAL,
   HEAT_STATE_SETBACK,
   HEAT_STATE_STANDBY,
+  HEAT_STATE_ERROR,
 } HeatState;
 
 /*********************************************************************************************************************
@@ -31,6 +32,8 @@ extern int heat_setpoint;
  *********************************************************************************************************************/
 
 void heat_init(void);
+void heat_toggle(void);
 void heat_loop(void);
+void heat_error(void);
 
 #endif // HEAT_H_

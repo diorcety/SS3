@@ -10,15 +10,19 @@
 
 static const int adc_channel_map[] = {
     [ADC_CHANNEL_TC1A] = ADCRight_ADCMEM_TC1A,
+    [ADC_CHANNEL_TC1V] = ADCRight_ADCMEM_TC1V,
     [ADC_CHANNEL_TC1] = ADCRight_ADCMEM_TC1,
     [ADC_CHANNEL_TC2A] = ADCLeft_ADCMEM_TC2A,
+    [ADC_CHANNEL_TC2V] = ADCLeft_ADCMEM_TC2V,
     [ADC_CHANNEL_TC2] = ADCLeft_ADCMEM_TC2,
 };
 
 static ADC12_Regs *const adc_instance_map[] = {
     [ADC_CHANNEL_TC1A] = ADCRight_INST,
+    [ADC_CHANNEL_TC1V] = ADCRight_INST,
     [ADC_CHANNEL_TC1] = ADCRight_INST,
     [ADC_CHANNEL_TC2A] = ADCLeft_INST,
+    [ADC_CHANNEL_TC2V] = ADCLeft_INST,
     [ADC_CHANNEL_TC2] = ADCLeft_INST,
 };
 

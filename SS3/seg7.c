@@ -108,6 +108,7 @@ typedef enum {
 
 static uint8_t const cold[] = {_C, _O, _L, _D, _SPACE};       //  CoLd
 static uint8_t const stby[] = {_S, _T, _B, _Y, _SPACE};       //  Stby
+static uint8_t const err[] = {_E, _R, _R, _SPACE, _SPACE};    //  Err
 static uint8_t const setb[] = {_S, _E, _T, _B, _SPACE};       //  SEtb
 static uint8_t const bacc[] = {_B, _A, _C, _C, _SPACE};       //  bAcc
 static uint8_t const dly1[] = {_D, _L, _Y, _1, _SPACE};       //  dLy1
@@ -302,6 +303,8 @@ void update_display(void) {
   case DISPLAY_STATE_MAIN:
     if (heat_state == HEAT_STATE_STANDBY) {
       display_text(stby);
+    } else if (heat_state == HEAT_STATE_ERROR) {
+      display_text(err);
     } else if (tip_type == TIP_TYPE_NC) {
       display_text(nc);
     } else if (timer_is_running(&current_setpoint_change_timer, true)) {
@@ -321,9 +324,18 @@ void update_display(void) {
       display[1] |= _POINT;
     }
 
-    // Blink when not in normal state
-    if (heat_state != HEAT_STATE_NORMAL && (systick_counter % SEG7_BLINK_DELAY) < (SEG7_BLINK_DELAY / 2)) {
+    // Blink the colon when the system is in a transitional state (not normal or error)
+    if (heat_state > HEAT_STATE_NORMAL && heat_state < HEAT_STATE_ERROR &&
+        (systick_counter % SEG7_BLINK_DELAY) < (SEG7_BLINK_DELAY / 2)) {
       display[4] |= _COLON;
+    }
+
+    // Blink the entire display when the system is in the error state
+    if (heat_state == HEAT_STATE_ERROR && (systick_counter % SEG7_BLINK_DELAY) < (SEG7_BLINK_DELAY / 2)) {
+      display[0] = _SPACE;
+      display[1] = _SPACE;
+      display[2] = _SPACE;
+      display[3] = _SPACE;
     }
     break;
 

@@ -17,7 +17,8 @@
 
 static const int TIP_CHANGE_WAIT_DELAY = 1000;
 static const int IRON_HEAT_BASE = 100;
-static const int IRON_DIFF_FACTOR = 1; // 1° diff == 1%
+static const int IRON_DIFF_FACTOR = 1;    // 1° diff == 1%
+static const float TC_MAX_VOLTAGE = 1.0f; // Should not get any voltage on TC
 
 /*********************************************************************************************************************
  *                                                                                                                   *
@@ -89,11 +90,33 @@ void iron_init(void) {
   timer_init(&tip_type_change_timer);
 }
 
+bool iron_is_standby(void) { return current_sw_state == 0 && next_set && next_sw_state == 0; }
+
+void iron_set_output(uint32_t value) {
+  current_sw_state = value;
+  DL_GPIO_writePinsVal(Switches_PORT, Switches_R24_PIN | Switches_R12_PIN | Switches_L24_PIN | Switches_L12_PIN, value);
+}
+
 void iron_loop(void) {
   NVIC_EnableIRQ(PowerProtection_INT_IRQN);
 
   if (!new_acquisition) {
     return;
+  }
+
+  // Fail-safe: With a 3.5 mm barrel jack, an incorrectly inserted plug can short the tip and ring,
+  // causing power to appear on the TC pin. In this case, we immediately shut down the power.
+  if (tip_type != TIP_TYPE_NC) {
+    if (tc_right_voltage >= TC_MAX_VOLTAGE) {
+      iron_set_output(0);
+      heat_error();
+    }
+    if (tip_type == TIP_TYPE_WMRT) {
+      if (tc_left_voltage >= TC_MAX_VOLTAGE) {
+        iron_set_output(0);
+        heat_error();
+      }
+    }
   }
 
   // Detect tip_type changes
@@ -144,13 +167,6 @@ void iron_loop(void) {
   // Will set the switches at next trigger
   next_sw_state = switches;
   next_set = true;
-}
-
-bool iron_is_standby(void) { return current_sw_state == 0 && next_set && next_sw_state == 0; }
-
-void iron_set_output(uint32_t value) {
-  current_sw_state = value;
-  DL_GPIO_writePinsVal(Switches_PORT, Switches_R24_PIN | Switches_R12_PIN | Switches_L24_PIN | Switches_L12_PIN, value);
 }
 
 void iron_trigger(void) {

@@ -9,6 +9,10 @@
  *                                                                                                                   *
  *********************************************************************************************************************/
 
+extern float tc_right_temperature;
+extern float tc_left_temperature;
+extern float tc_right_voltage;
+extern float tc_left_voltage;
 extern int right_temperature;
 extern int left_temperature;
 extern int reed_value;

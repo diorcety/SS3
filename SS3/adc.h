@@ -15,8 +15,10 @@ static const int ADC_MAX = ((1 << ADC_BITS) - 1);
 
 typedef enum {
   ADC_CHANNEL_TC1A,
+  ADC_CHANNEL_TC1V,
   ADC_CHANNEL_TC1,
   ADC_CHANNEL_TC2A,
+  ADC_CHANNEL_TC2V,
   ADC_CHANNEL_TC2,
   ADC_CHANNEL_MAX
 } AdcChannel;

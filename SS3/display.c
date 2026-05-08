@@ -168,11 +168,7 @@ static DisplayState st_display_change(DisplayState state) {
 static DisplayState st_main_event(Event event) {
   switch (event) {
   case EVENT_PRESS:
-    if (heat_state == HEAT_STATE_NORMAL) {
-      heat_state = HEAT_STATE_STANDBY;
-    } else if (heat_state == HEAT_STATE_STANDBY) {
-      heat_state = HEAT_STATE_NORMAL;
-    }
+    heat_toggle();
     break;
   case EVENT_LONG_PRESS:
     return st_display_change(DISPLAY_STATE_MAIN_MENU);
