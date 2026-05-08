@@ -111,7 +111,7 @@ void heat_toggle(void) {
   idle_timestamp = systick_get();
   if (heat_state == HEAT_STATE_NORMAL) {
     heat_state = HEAT_STATE_STANDBY;
-  } else if (heat_state == HEAT_STATE_STANDBY) {
+  } else {
     heat_state = HEAT_STATE_NORMAL;
   }
 }
