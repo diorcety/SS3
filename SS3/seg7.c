@@ -41,8 +41,8 @@ static const int SPI_INPUT_CLOCK = CPUCLK_FREQ / (SPI_PRESCALER + 1);
 static const int SPI_SPEED = SPI_INPUT_CLOCK / (2 * SPI_OUTPUT_BIT_RATE) - 1;
 
 static const int MAIN_PERIOD_IIR_WINDOW = 8;
-static const int LEFT_TEMPERATURE_IIR_WINDOW = 8;
-static const int RIGHT_TEMPERATURE_IIR_WINDOW = 8;
+static const int LEFT_TEMPERATURE_IIR_WINDOW = 32;
+static const int RIGHT_TEMPERATURE_IIR_WINDOW = 32;
 
 static const int SEG7_SETPOINT_DELAY = 1000;
 static const int SEG7_BLINK_DELAY = 1028;
