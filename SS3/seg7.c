@@ -40,9 +40,9 @@ static const int SPI_OUTPUT_BIT_RATE = REFRESH_HZ * 16 * 8;
 static const int SPI_INPUT_CLOCK = CPUCLK_FREQ / (SPI_PRESCALER + 1);
 static const int SPI_SPEED = SPI_INPUT_CLOCK / (2 * SPI_OUTPUT_BIT_RATE) - 1;
 
-static const int MAIN_PERIOD_IIR_WINDOW = 8;
-static const int LEFT_TEMPERATURE_IIR_WINDOW = 32;
-static const int RIGHT_TEMPERATURE_IIR_WINDOW = 32;
+static const int SEG7_MAIN_PERIOD_IIR_WINDOW = 8;
+static const int SEG7_LEFT_TEMPERATURE_IIR_WINDOW = 32;
+static const int SEG7_RIGHT_TEMPERATURE_IIR_WINDOW = 32;
 
 static const int SEG7_SETPOINT_DELAY = 1000;
 static const int SEG7_BLINK_DELAY = 1028;
@@ -440,7 +440,7 @@ void update_display(void) {
     break;
 
   case DISPLAY_STATE_SHOW_FREQUENCY: {
-    int main_frequency = (int)((1000.0f / 2.0f) / (float)IIR_FILTER_GET(MAIN_PERIOD_IIR_WINDOW, main_period_acc));
+    int main_frequency = (int)((1000.0f / 2.0f) / (float)IIR_FILTER_GET(SEG7_MAIN_PERIOD_IIR_WINDOW, main_period_acc));
     display_number(DISPLAY_MODE_NUM, main_frequency, number_force_update);
   } break;
 
@@ -531,22 +531,22 @@ void seg7_loop(void) {
   NVIC_EnableIRQ(SPI_0_INST_INT_IRQN);
 
   if (new_acquisition) {
-    IIR_FILTER_ADD(MAIN_PERIOD_IIR_WINDOW, main_period_acc, main_period);
+    IIR_FILTER_ADD(SEG7_MAIN_PERIOD_IIR_WINDOW, main_period_acc, main_period);
 
     if (tip_has_right()) {
-      IIR_FILTER_ADD(RIGHT_TEMPERATURE_IIR_WINDOW, right_temperature_acc, right_temperature);
+      IIR_FILTER_ADD(SEG7_RIGHT_TEMPERATURE_IIR_WINDOW, right_temperature_acc, right_temperature);
     } else {
-      IIR_FILTER_ADD(RIGHT_TEMPERATURE_IIR_WINDOW, right_temperature_acc, kty_temperature);
+      IIR_FILTER_ADD(SEG7_RIGHT_TEMPERATURE_IIR_WINDOW, right_temperature_acc, kty_temperature);
     }
     if (tip_has_left()) {
-      IIR_FILTER_ADD(LEFT_TEMPERATURE_IIR_WINDOW, left_temperature_acc, left_temperature);
+      IIR_FILTER_ADD(SEG7_LEFT_TEMPERATURE_IIR_WINDOW, left_temperature_acc, left_temperature);
     } else {
-      IIR_FILTER_ADD(LEFT_TEMPERATURE_IIR_WINDOW, left_temperature_acc, kty_temperature);
+      IIR_FILTER_ADD(SEG7_LEFT_TEMPERATURE_IIR_WINDOW, left_temperature_acc, kty_temperature);
     }
 
     // Get filtred value
-    int tmp_right_temperature_filtred = IIR_FILTER_GET(RIGHT_TEMPERATURE_IIR_WINDOW, right_temperature_acc);
-    int tmp_left_temperature_filtred = IIR_FILTER_GET(LEFT_TEMPERATURE_IIR_WINDOW, left_temperature_acc);
+    int tmp_right_temperature_filtred = IIR_FILTER_GET(SEG7_RIGHT_TEMPERATURE_IIR_WINDOW, right_temperature_acc);
+    int tmp_left_temperature_filtred = IIR_FILTER_GET(SEG7_LEFT_TEMPERATURE_IIR_WINDOW, left_temperature_acc);
 
     // Only update above threshold or after some delay: avoid flikering
     if (abs(tmp_right_temperature_filtred - right_temperature_filtred) >= SEG7_TEMPERATURE_SLOW_THRESHOLD_DEG ||
