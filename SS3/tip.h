@@ -2,6 +2,7 @@
 #define TIP_H_
 
 #include <stdint.h>
+#include <stdbool.h>
 
 typedef enum {
   TIP_TYPE_NC,
@@ -32,5 +33,8 @@ extern ReedState reed_state;
 
 void tip_init(void);
 void tip_loop(void);
+
+static inline bool tip_has_left(void) { return tip_type == TIP_TYPE_WMRT; }
+static inline bool tip_has_right(void) { return tip_type != TIP_TYPE_NC; }
 
 #endif // TIP_H_

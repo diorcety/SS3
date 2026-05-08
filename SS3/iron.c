@@ -118,16 +118,16 @@ void iron_loop(void) {
 
   // Fail-safe: With a 3.5 mm barrel jack, an incorrectly inserted plug can short the tip and ring,
   // causing power to appear on the TC pin. In this case, we immediately shut down the power.
-  if (tip_type != TIP_TYPE_NC) {
+  if (tip_has_right()) {
     if (tc_right_voltage >= TC_MAX_VOLTAGE) {
       iron_set_output(0);
       heat_error();
     }
-    if (tip_type == TIP_TYPE_WMRT) {
-      if (tc_left_voltage >= TC_MAX_VOLTAGE) {
-        iron_set_output(0);
-        heat_error();
-      }
+  }
+  if (tip_has_left()) {
+    if (tc_left_voltage >= TC_MAX_VOLTAGE) {
+      iron_set_output(0);
+      heat_error();
     }
   }
 

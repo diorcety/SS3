@@ -505,8 +505,12 @@ void seg7_loop(void) {
 
   if (new_acquisition) {
     IIR_FILTER_ADD(MAIN_PERIOD_IIR_WINDOW, main_period_acc, main_period);
-    IIR_FILTER_ADD(RIGHT_TEMPERATURE_IIR_WINDOW, right_temperature_acc, right_temperature);
-    IIR_FILTER_ADD(LEFT_TEMPERATURE_IIR_WINDOW, left_temperature_acc, left_temperature);
+    if (tip_has_right()) {
+      IIR_FILTER_ADD(RIGHT_TEMPERATURE_IIR_WINDOW, right_temperature_acc, right_temperature);
+    }
+    if (tip_has_left()) {
+      IIR_FILTER_ADD(LEFT_TEMPERATURE_IIR_WINDOW, left_temperature_acc, left_temperature);
+    }
 
     // Get filtred value
     int tmp_right_temperature_filtred = IIR_FILTER_GET(RIGHT_TEMPERATURE_IIR_WINDOW, right_temperature_acc);
