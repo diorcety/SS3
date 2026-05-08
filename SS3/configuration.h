@@ -54,6 +54,8 @@ static const int DUTY_BASE = 100;
 
 static const int FW_VERSION = 1;
 
+static const int KTY_FALLBACK = 30;
+
 typedef enum {
   TEMPERATURE_UNIT_C,
   TEMPERATURE_UNIT_F

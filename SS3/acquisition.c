@@ -51,13 +51,14 @@ float tc_left_temperature;
 float tc_left_voltage;
 int left_temperature;
 
+float kty_value;
+int kty_temperature;
+
 int reed_value;
-int kty_value;
+
 bool new_acquisition;
 
 static struct pt acq_process_pt;
-
-static float kty_value_float;
 
 static uint16_t raw_values[ADC_CHANNEL_MAX];
 
@@ -79,7 +80,8 @@ static int tc2a_acc, tc2_acc;
 
 void acquisition_init(void) {
   pt_reset(&acq_process_pt);
-  kty_value = left_temperature = right_temperature = 25;
+  kty_value = (float)KTY_FALLBACK;
+  kty_temperature = left_temperature = right_temperature = KTY_FALLBACK;
   tc_left_temperature = tc_right_temperature = 0.0f;
   tc_left_voltage = tc_right_voltage = 0.0f;
   reed_value = ADC_MAX;
@@ -119,8 +121,8 @@ static void acquisition_compute(void) {
 
   // TC2 is isometric: not compensed
   // -> Supply voltage is the same that ADC VREF+
-  kty_value_float = interpolate2d_u16_f32(&kty_inter_table, filtred_value);
-  kty_value = ROUND(int, kty_value_float);
+  kty_value = interpolate2d_u16_f32(&kty_inter_table, filtred_value);
+  kty_temperature = (!poor_mode) ? ROUND(int, kty_value) : KTY_FALLBACK;
 
   //
   // REED/TC1
@@ -157,7 +159,7 @@ static void acquisition_compute(void) {
 
   // Final temperature is interpolated TC value plus KTY value.
   tc_left_temperature = interpolate2d_u16_f32(&tc_inter_table, compensated_value);
-  left_temperature = ROUND(int, tc_left_temperature + kty_value_float);
+  left_temperature = ROUND(int, tc_left_temperature + ((!poor_mode) ? kty_value : KTY_FALLBACK));
 
   //
   // RIGHT TEMP/TC1A
@@ -178,7 +180,7 @@ static void acquisition_compute(void) {
 
   // Final temperature is interpolated TC value plus KTY value.
   tc_right_temperature = interpolate2d_u16_f32(&tc_inter_table, compensated_value);
-  right_temperature = ROUND(int, tc_right_temperature + kty_value_float);
+  right_temperature = ROUND(int, tc_right_temperature + ((!poor_mode) ? kty_value : KTY_FALLBACK));
 
   //
   // LEFT VOLTAGE/TC2V

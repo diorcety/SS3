@@ -511,11 +511,16 @@ void seg7_loop(void) {
 
   if (new_acquisition) {
     IIR_FILTER_ADD(MAIN_PERIOD_IIR_WINDOW, main_period_acc, main_period);
+
     if (tip_has_right()) {
       IIR_FILTER_ADD(RIGHT_TEMPERATURE_IIR_WINDOW, right_temperature_acc, right_temperature);
+    } else {
+      IIR_FILTER_ADD(RIGHT_TEMPERATURE_IIR_WINDOW, right_temperature_acc, kty_temperature);
     }
     if (tip_has_left()) {
       IIR_FILTER_ADD(LEFT_TEMPERATURE_IIR_WINDOW, left_temperature_acc, left_temperature);
+    } else {
+      IIR_FILTER_ADD(LEFT_TEMPERATURE_IIR_WINDOW, left_temperature_acc, kty_temperature);
     }
 
     // Get filtred value

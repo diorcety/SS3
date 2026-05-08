@@ -113,7 +113,7 @@ void iron_loop(void) {
   if (tip_type != TIP_TYPE_NC) {
     IIR_FILTER_ADD(HEAT_SETPOINT_WINDOW, heat_setpoint_counter, heat_setpoint);
   } else {
-    heat_setpoint_counter = 0;
+    IIR_FILTER_ADD(HEAT_SETPOINT_WINDOW, heat_setpoint_counter, kty_temperature);
   }
 
   // Fail-safe: With a 3.5 mm barrel jack, an incorrectly inserted plug can short the tip and ring,

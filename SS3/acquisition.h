@@ -16,7 +16,8 @@ extern float tc_left_voltage;
 extern int right_temperature;
 extern int left_temperature;
 extern int reed_value;
-extern int kty_value;
+extern float kty_value;
+extern int kty_temperature;
 
 extern bool new_acquisition;
 
