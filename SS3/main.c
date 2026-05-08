@@ -64,9 +64,7 @@ static void loop(void) {
 
   // Don't freeze during a tricky moment
   if (iron_is_standby()) {
-#if 0
       configuration_loop();
-#endif
   }
 }
 
