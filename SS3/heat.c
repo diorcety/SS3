@@ -55,22 +55,26 @@ void heat_loop(void) {
   }
 
   if (heat_state != HEAT_STATE_ERROR) {
-    if (setback_delay > 0 && heat_state < HEAT_STATE_SETBACK && systick_elapsed(idle_timestamp, setback_delay * 1000)) {
-      heat_state = HEAT_STATE_SETBACK;
-    } else if (standby_delay > 0 && heat_state < HEAT_STATE_STANDBY &&
-               systick_elapsed(idle_timestamp, standby_delay * 1000)) {
-      heat_state = HEAT_STATE_STANDBY;
-    }
+    if (tip_type != TIP_TYPE_NC) {
+      if (setback_delay > 0 && heat_state < HEAT_STATE_SETBACK &&
+          systick_elapsed(idle_timestamp, setback_delay * 1000)) {
+        heat_state = HEAT_STATE_SETBACK;
+      } else if (standby_delay > 0 && heat_state < HEAT_STATE_STANDBY &&
+                 systick_elapsed(idle_timestamp, standby_delay * 1000)) {
+        heat_state = HEAT_STATE_STANDBY;
+      }
 
-    if (previous_reed_state != reed_state) {
-      if (reed_state == REED_STATE_OPENED) {
+      if (previous_reed_state != reed_state) {
+        if (reed_state == REED_STATE_OPENED) {
+          heat_state = HEAT_STATE_NORMAL;
+        }
+      }
+      if (previous_tip_type != tip_type) {
         heat_state = HEAT_STATE_NORMAL;
       }
-    }
-    if (previous_tip_type != tip_type) {
-      if (tip_type != TIP_TYPE_NC) {
-        heat_state = HEAT_STATE_NORMAL;
-      }
+    } else {
+      // Idle logic is only valie with a tip
+      idle_timestamp = systick_get();
     }
   } else {
     // In case of error, ensure that the user completly unplug the tip before retrying anything
