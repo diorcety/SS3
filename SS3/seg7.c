@@ -46,6 +46,8 @@ static const int RIGHT_TEMPERATURE_IIR_WINDOW = 32;
 
 static const int SEG7_SETPOINT_DELAY = 1000;
 static const int SEG7_BLINK_DELAY = 1028;
+static const int SEG7_NUMBER_UPDATE_DELAY = 200;
+
 static const int SEG7_TEMPERATURE_SLOW_UPDATE_MS = 1000;
 static const int SEG7_TEMPERATURE_SLOW_THRESHOLD_DEG = 2;
 
@@ -182,16 +184,21 @@ static timer_t delay_timer;
 static timer_t current_setpoint_change_timer;
 static int previous_setpoint;
 
+static uint32_t number_last_update;
+static bool number_force_update;
+
 static int main_period_acc;
 static int right_temperature_acc;
 static int right_temperature_filtred;
 static int left_temperature_acc;
 static int left_temperature_filtred;
+
 static uint32_t previous_temperature_update;
 
 static uint8_t display[5];
 static uint8_t current_index;
 static uint16_t spi_data;
+static DisplayState previous_display_state;
 
 /*********************************************************************************************************************
  *                                                                                                                   *
@@ -232,7 +239,13 @@ static inline DisplayMode temp_unit(void) {
   return ((TemperatureUnit)temperature_unit == TEMPERATURE_UNIT_C) ? DISPLAY_MODE_C : DISPLAY_MODE_F;
 }
 
-void display_number(DisplayMode display_mode, int num) {
+void display_number(DisplayMode display_mode, int num, bool force) {
+  if (!force && !systick_elapsed(number_last_update, SEG7_NUMBER_UPDATE_DELAY)) {
+    return;
+  }
+  number_force_update = false;
+  number_last_update = systick_get();
+
   int j; // Digit index
 
   switch (display_mode) {
@@ -305,6 +318,11 @@ void update_menu_diag_display(void) {
 }
 
 void update_display(void) {
+  if (previous_display_state != display_state) {
+    number_force_update = true;
+    previous_display_state = display_state;
+  }
+
   switch (display_state) {
   case DISPLAY_STATE_MAIN:
     if (heat_state == HEAT_STATE_STANDBY) {
@@ -312,13 +330,13 @@ void update_display(void) {
     } else if (heat_state == HEAT_STATE_ERROR) {
       display_text(err);
     } else if (timer_is_running(&current_setpoint_change_timer, true)) {
-      display_number(temp_unit(), heat_setpoint);
+      display_number(temp_unit(), heat_setpoint, number_force_update);
     } else if (tip_type == TIP_TYPE_NC) {
       display_text(nc);
     } else if (tip_type != TIP_TYPE_WMRT) {
-      display_number(temp_unit(), right_temperature_filtred);
+      display_number(temp_unit(), right_temperature_filtred, number_force_update);
     } else {
-      display_number(temp_unit(), (left_temperature_filtred + right_temperature_filtred) / 2);
+      display_number(temp_unit(), (left_temperature_filtred + right_temperature_filtred) / 2, number_force_update);
     }
     if (right_heat) {
       display[3] |= _POINT;
@@ -350,14 +368,14 @@ void update_display(void) {
     break;
 
   case DISPLAY_STATE_ADJ_SETBACK:
-    display_number(temp_unit(), setback);
+    display_number(temp_unit(), setback, true);
     break;
 
   case DISPLAY_STATE_ADJ_SETBACK_DELAY:
     if (setback_delay == SETBACK_DELAY_MIN) {
       display_text(off);
     } else {
-      display_number(DISPLAY_MODE_NUM, setback_delay);
+      display_number(DISPLAY_MODE_NUM, setback_delay, true);
     }
     break;
 
@@ -365,20 +383,20 @@ void update_display(void) {
     if (standby_delay == STANDBY_DELAY_MIN) {
       display_text(off);
     } else {
-      display_number(DISPLAY_MODE_NUM, standby_delay);
+      display_number(DISPLAY_MODE_NUM, standby_delay, true);
     }
     break;
 
   case DISPLAY_STATE_ADJ_OFFSET:
-    display_number(temp_unit(), temperature_offset);
+    display_number(temp_unit(), temperature_offset, true);
     break;
 
   case DISPLAY_STATE_ADJ_UNIT:
-    display_number(temp_unit(), 0);
+    display_number(temp_unit(), 0, true);
     break;
 
   case DISPLAY_STATE_ADJ_STEP_SIZE:
-    display_number(temp_unit(), step_size);
+    display_number(temp_unit(), step_size, true);
     break;
 
   case DISPLAY_STATE_DIAG_MENU:
@@ -386,11 +404,11 @@ void update_display(void) {
     break;
 
   case DISPLAY_STATE_SHOW_COLD_COMPENSATION:
-    display_number(temp_unit(), kty_value);
+    display_number(temp_unit(), (int)kty_value, number_force_update);
     break;
 
   case DISPLAY_STATE_ADJ_REFERENCE:
-    display_number(DISPLAY_MODE_REF, reference);
+    display_number(DISPLAY_MODE_REF, reference, true);
     break;
 
   case DISPLAY_STATE_SHOW_TIP_TYPE:
@@ -423,35 +441,35 @@ void update_display(void) {
 
   case DISPLAY_STATE_SHOW_FREQUENCY: {
     int main_frequency = (int)((1000.0f / 2.0f) / (float)IIR_FILTER_GET(MAIN_PERIOD_IIR_WINDOW, main_period_acc));
-    display_number(DISPLAY_MODE_NUM, main_frequency);
+    display_number(DISPLAY_MODE_NUM, main_frequency, number_force_update);
   } break;
 
   case DISPLAY_STATE_SHOW_TC_1_READING:
-    display_number(temp_unit(), (int)tc_right_temperature);
+    display_number(temp_unit(), (int)tc_right_temperature, number_force_update);
     break;
 
   case DISPLAY_STATE_SHOW_TC_2_READING:
-    display_number(temp_unit(), (int)tc_left_temperature);
+    display_number(temp_unit(), (int)tc_left_temperature, number_force_update);
     break;
 
   case DISPLAY_STATE_SHOW_PWM_1_READING:
-    display_number(DISPLAY_MODE_NUM, right_duty);
+    display_number(DISPLAY_MODE_NUM, right_duty, number_force_update);
     break;
 
   case DISPLAY_STATE_SHOW_PWM_2_READING:
-    display_number(DISPLAY_MODE_NUM, left_duty);
+    display_number(DISPLAY_MODE_NUM, left_duty, number_force_update);
     break;
 
   case DISPLAY_STATE_ADJ_IDLE_DUTY:
     if (idle_duty == 0) {
       display_text(off);
     } else {
-      display_number(DISPLAY_MODE_NUM, idle_duty);
+      display_number(DISPLAY_MODE_NUM, idle_duty, true);
     }
     break;
 
   case DISPLAY_STATE_ADJ_MAX_DUTY:
-    display_number(DISPLAY_MODE_NUM, max_duty);
+    display_number(DISPLAY_MODE_NUM, max_duty, true);
     break;
 
   case DISPLAY_STATE_ADJ_POOR:
@@ -463,7 +481,7 @@ void update_display(void) {
     break;
 
   case DISPLAY_STATE_SHOW_FW_VERSION:
-    display_number(DISPLAY_MODE_VERSION, FW_VERSION);
+    display_number(DISPLAY_MODE_VERSION, FW_VERSION, true);
     break;
   }
 }
@@ -480,7 +498,9 @@ void seg7_init(void) {
   right_temperature_acc = left_temperature_acc = 0;
   right_temperature_filtred = 0;
   left_temperature_filtred = 0;
-  previous_temperature_update = systick_get();
+  previous_display_state = display_state;
+  previous_temperature_update = number_last_update = systick_get();
+  number_force_update = true;
   display_text(nc);
 
   SPI_0_INST->CLKDIV = SPI_PRESCALER;
