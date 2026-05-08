@@ -142,7 +142,7 @@ void iron_loop(void) {
     if (right_heat) {
       if (tip_type == TIP_TYPE_WMRP || tip_type == TIP_TYPE_WMRT) {
         switches |= Switches_R12_PIN;
-      } else if (tip_type == TIP_TYPE_WMUP) {
+      } else if (tip_type == TIP_TYPE_WXUP) {
         switches |= Switches_R24_PIN;
       } else {
         right_duty = 0;

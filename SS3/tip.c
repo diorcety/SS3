@@ -26,9 +26,9 @@ static const float RATIO = (float)ADC_MAX / (float)ADCRight_ADCMEM_TC1_REF_VOLTA
 
 static const float REED_TOLERANCE = 0.1f; // 10%
 
-static const int REED_WMUP_VALUE_MIN =
+static const int REED_WXUP_VALUE_MIN =
     ROUND(int, REED_SUPPLY_VOLTAGE_V *VOLTAGE_DIVIDER_MIN_VALUE(1000.0f, 510.0f, REED_TOLERANCE) * RATIO);
-static const int REED_WMUP_VALUE_MAX =
+static const int REED_WXUP_VALUE_MAX =
     ROUND(int, REED_SUPPLY_VOLTAGE_V *VOLTAGE_DIVIDER_MAX_VALUE(1000.0f, 510.0f, REED_TOLERANCE) * RATIO);
 static const int REED_WMRP_VALUE_MIN =
     ROUND(int, REED_SUPPLY_VOLTAGE_V *VOLTAGE_DIVIDER_MIN_VALUE(1000.0f, 1000.0f, REED_TOLERANCE) * RATIO);
@@ -42,8 +42,8 @@ static const int REED_WMRT_VALUE_MAX =
 static const int REED_CLOSED_VALUE = ROUND(int, REED_SUPPLY_VOLTAGE_V * 0.2f * RATIO);
 static const int REED_NC_VALUE = ROUND(int, REED_SUPPLY_VOLTAGE_V * 0.8f * RATIO);
 
-_Static_assert((REED_WMUP_VALUE_MIN - REED_CLOSED_VALUE) > 0, "Not enough room between CLOSED and WMUP");
-_Static_assert((REED_WMRP_VALUE_MIN - REED_WMUP_VALUE_MAX) > 0, "Not enough room between WMUP and WMRP");
+_Static_assert((REED_WXUP_VALUE_MIN - REED_CLOSED_VALUE) > 0, "Not enough room between CLOSED and WXUP");
+_Static_assert((REED_WMRP_VALUE_MIN - REED_WXUP_VALUE_MAX) > 0, "Not enough room between WXUP and WMRP");
 _Static_assert((REED_WMRT_VALUE_MIN - REED_WMRP_VALUE_MAX) > 0, "Not enough room between WMRP and WMRT");
 _Static_assert((REED_NC_VALUE - REED_WMRT_VALUE_MAX) > 0, "Not enough room between WMRT and NC");
 
@@ -84,8 +84,8 @@ void tip_loop(void) {
     } else {
       reed_state = REED_STATE_CLOSED;
     }
-  } else if (reed_in_range(reed_value, REED_WMUP_VALUE_MIN, REED_WMUP_VALUE_MAX)) {
-    tip_type = TIP_TYPE_WMUP;
+  } else if (reed_in_range(reed_value, REED_WXUP_VALUE_MIN, REED_WXUP_VALUE_MAX)) {
+    tip_type = TIP_TYPE_WXUP;
     reed_state = REED_STATE_OPENED;
   } else if (reed_in_range(reed_value, REED_WMRP_VALUE_MIN, REED_WMRP_VALUE_MAX)) {
     tip_type = TIP_TYPE_WMRP;

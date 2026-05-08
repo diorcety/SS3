@@ -91,7 +91,7 @@ typedef enum {
 #define _J 0x1e
 #define _K 0x76
 #define _L 0x38
-#define _M 0x15
+// #define _M 0x15
 #define _N 0x54
 #define _O 0x5c
 #define _P 0x73
@@ -101,42 +101,42 @@ typedef enum {
 #define _T 0x78
 #define _U 0x3e
 #define _V 0x1c
-#define _W 0x2a
+// #define _W 0x2a
 #define _X 0x76
 #define _Y 0x6e
 #define _Z 0x5b
 
-static uint8_t const cold[] = {_C, _O, _L, _D, _SPACE};       //  CoLd
-static uint8_t const stby[] = {_S, _T, _B, _Y, _SPACE};       //  Stby
-static uint8_t const err[] = {_E, _R, _R, _SPACE, _SPACE};    //  Err
-static uint8_t const setb[] = {_S, _E, _T, _B, _SPACE};       //  SEtb
-static uint8_t const bacc[] = {_B, _A, _C, _C, _SPACE};       //  bAcc
-static uint8_t const dly1[] = {_D, _L, _Y, _1, _SPACE};       //  dLy1
-static uint8_t const dly2[] = {_D, _L, _Y, _2, _SPACE};       //  dLy2
-static uint8_t const off[] = {_SPACE, _O, _F, _F, _SPACE};    //  OFF
-static uint8_t const ofse[] = {_O, _F, _S, _E, _SPACE};       //  oFSE
-static uint8_t const unit[] = {_U, _N, _I, _T, _SPACE};       //  Unit
-static uint8_t const step[] = {_S, _T, _E, _P, _SPACE};       //  StEP
-static uint8_t const diag[] = {_D, _I, _A, _G, _SPACE};       //  diAG
-static uint8_t const ref[] = {_SPACE, _R, _E, _F, _SPACE};    //  rEF
-static uint8_t const type[] = {_T, _Y, _P, _E, _SPACE};       //  tyPE
-static uint8_t const wmrp[] = {_W, _M, _R, _P, _SPACE};       //  WMrP
-static uint8_t const wmup[] = {_W, _M, _U, _P, _SPACE};       //  WMuP
-static uint8_t const wmrt[] = {_W, _M, _R, _T, _SPACE};       //  WMrt
-static uint8_t const nc[] = {_SPACE, _N, _C, _SPACE, _SPACE}; //  nC
-static uint8_t const reed[] = {_R, _E, _E, _D, _SPACE};       //  rEEd
-static uint8_t const open[] = {_O, _P, _E, _N, _SPACE};       //  oPEn
-static uint8_t const clos[] = {_C, _L, _O, _S, _SPACE};       //  CLoS
-static uint8_t const tc_1[] = {_T, _C, _SPACE, _1, _SPACE};   //  tC 1
-static uint8_t const tc_2[] = {_T, _C, _SPACE, _2, _SPACE};   //  tC 2
-static uint8_t const pwm1[] = {_D, _C, _SPACE, _1, _SPACE};   //  dC 1
-static uint8_t const pwm2[] = {_D, _C, _SPACE, _2, _SPACE};   //  dC 2
-static uint8_t const idle[] = {_I, _D, _L, _E, _SPACE};       //  idLE
-static uint8_t const max[] = {_SPACE, _M, _A, _X, _SPACE};    //  mAX
-static uint8_t const poor[] = {_P, _O, _O, _R, _SPACE};       //  Poor
-static uint8_t const on[] = {_SPACE, _SPACE, _O, _N, _SPACE}; // on
-static uint8_t const freq[] = {_F, _R, _E, _Q, _SPACE};       //	FrEQ
-static uint8_t const vers[] = {_V, _E, _R, _S, _SPACE};       //  vErS
+static uint8_t const cold[] = {_C, _O, _L, _D, _SPACE};         //  CoLd
+static uint8_t const stby[] = {_S, _T, _B, _Y, _SPACE};         //  Stby
+static uint8_t const err[] = {_E, _R, _R, _SPACE, _SPACE};      //  Err
+static uint8_t const setb[] = {_S, _E, _T, _B, _SPACE};         //  SEtb
+static uint8_t const bacc[] = {_B, _A, _C, _C, _SPACE};         //  bAcc
+static uint8_t const dly1[] = {_D, _L, _Y, _1, _SPACE};         //  dLy1
+static uint8_t const dly2[] = {_D, _L, _Y, _2, _SPACE};         //  dLy2
+static uint8_t const off[] = {_SPACE, _O, _F, _F, _SPACE};      //  OFF
+static uint8_t const ofse[] = {_O, _F, _S, _E, _SPACE};         //  oFSE
+static uint8_t const unit[] = {_U, _N, _I, _T, _SPACE};         //  Unit
+static uint8_t const step[] = {_S, _T, _E, _P, _SPACE};         //  StEP
+static uint8_t const diag[] = {_D, _I, _A, _G, _SPACE};         //  diAG
+static uint8_t const ref[] = {_SPACE, _R, _E, _F, _SPACE};      //  rEF
+static uint8_t const type[] = {_T, _Y, _P, _E, _SPACE};         //  tyPE
+static uint8_t const wmrp[] = {_SPACE, _R, _P, _SPACE, _SPACE}; //  rP
+static uint8_t const wxup[] = {_SPACE, _U, _P, _SPACE, _SPACE}; //  uP
+static uint8_t const wmrt[] = {_SPACE, _R, _T, _SPACE, _SPACE}; //  rt
+static uint8_t const nc[] = {_SPACE, _N, _C, _SPACE, _SPACE};   //  nC
+static uint8_t const reed[] = {_R, _E, _E, _D, _SPACE};         //  rEEd
+static uint8_t const open[] = {_O, _P, _E, _N, _SPACE};         //  oPEn
+static uint8_t const clos[] = {_C, _L, _O, _S, _SPACE};         //  CLoS
+static uint8_t const tc_1[] = {_T, _C, _SPACE, _1, _SPACE};     //  tC 1
+static uint8_t const tc_2[] = {_T, _C, _SPACE, _2, _SPACE};     //  tC 2
+static uint8_t const pwm1[] = {_D, _C, _SPACE, _1, _SPACE};     //  dC 1
+static uint8_t const pwm2[] = {_D, _C, _SPACE, _2, _SPACE};     //  dC 2
+static uint8_t const idle[] = {_I, _D, _L, _E, _SPACE};         //  idLE
+static uint8_t const max[] = {_F, _U, _L, _L, _SPACE};          //  FuLL
+static uint8_t const poor[] = {_P, _O, _O, _R, _SPACE};         //  Poor
+static uint8_t const on[] = {_SPACE, _SPACE, _O, _N, _SPACE};   // on
+static uint8_t const freq[] = {_F, _R, _E, _Q, _SPACE};         //	FrEQ
+static uint8_t const vers[] = {_V, _E, _R, _S, _SPACE};         //  vErS
 
 static uint8_t const hex_table[] = {_0, _1, _2, _3, _4, _5, _6, _7, _8, _9, _A, _B, _C, _D, _E, _F};
 
@@ -395,8 +395,8 @@ void update_display(void) {
 
   case DISPLAY_STATE_SHOW_TIP_TYPE:
     switch (tip_type) {
-    case TIP_TYPE_WMUP:
-      display_text(wmup);
+    case TIP_TYPE_WXUP:
+      display_text(wxup);
       break;
     case TIP_TYPE_WMRP:
       display_text(wmrp);
@@ -476,7 +476,8 @@ void seg7_init(void) {
   trigger = false;
   previous_setpoint = heat_setpoint;
   current_index = 0;
-  main_period_acc = right_temperature_acc = left_temperature_acc = 0;
+  main_period_acc = 0;
+  right_temperature_acc = left_temperature_acc = 0;
   right_temperature_filtred = 0;
   left_temperature_filtred = 0;
   previous_temperature_update = systick_get();

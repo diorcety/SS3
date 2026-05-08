@@ -6,7 +6,7 @@
 
 typedef enum {
   TIP_TYPE_NC,
-  TIP_TYPE_WMUP,
+  TIP_TYPE_WXUP,
   TIP_TYPE_WMRP,
   TIP_TYPE_WMRT
 } TipType;
