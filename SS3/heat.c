@@ -69,9 +69,6 @@ void heat_loop(void) {
           heat_state = HEAT_STATE_NORMAL;
         }
       }
-      if (previous_tip_type != tip_type) {
-        heat_state = HEAT_STATE_NORMAL;
-      }
     } else {
       // Idle logic is only valie with a tip
       idle_timestamp = systick_get();
