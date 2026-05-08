@@ -156,7 +156,7 @@ add_custom_command(TARGET SS3 POST_BUILD COMMAND
 # Debug vs Release
 # ----------------------------------------------------------------------------------------------------------------------
 target_compile_definitions(SS3 PRIVATE
-    $<$<CONFIG:Debug>:NO_WDG>
+    $<$<CONFIG:Debug>:NO_WDG NO_EEPROM_SAVE>
 )
 
 target_compile_options(SS3 PRIVATE

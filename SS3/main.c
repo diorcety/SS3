@@ -64,7 +64,9 @@ static void loop(void) {
 
   // Don't freeze during a tricky moment
   if (iron_is_standby()) {
-      configuration_loop();
+#if !defined(NO_EEPROM_SAVE)
+    configuration_loop();
+#endif
   }
 }
 
