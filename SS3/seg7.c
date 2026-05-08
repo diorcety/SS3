@@ -421,11 +421,11 @@ void update_display(void) {
   } break;
 
   case DISPLAY_STATE_SHOW_TC_1_READING:
-    display_number(temp_unit(), right_temperature);
+    display_number(temp_unit(), (int)tc_right_temperature);
     break;
 
   case DISPLAY_STATE_SHOW_TC_2_READING:
-    display_number(temp_unit(), left_temperature);
+    display_number(temp_unit(), (int)tc_left_temperature);
     break;
 
   case DISPLAY_STATE_SHOW_PWM_1_READING:
