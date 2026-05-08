@@ -267,7 +267,13 @@ void display_number(DisplayMode display_mode, int num) {
       if (has_sign) {
         display[j] = _SPACE;
       } else {
-        display[j] = (num < 0) ? _MINUS : _SPACE;
+        if (num < 0) {
+          display[j] = _MINUS;
+        } else if (num > 0) {
+          display[j] = _SPACE;
+        } else {
+          display[j] = hex_table[0];
+        }
         has_sign = true;
       }
     } else {
