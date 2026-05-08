@@ -23,6 +23,7 @@ const GPIO2         = GPIO.addInstance();
 const GPIO3         = GPIO.addInstance();
 const GPIO4         = GPIO.addInstance();
 const MATHACL       = scripting.addModule("/ti/driverlib/MATHACL");
+const NONMAIN       = scripting.addModule("/ti/driverlib/NONMAIN");
 const OPA           = scripting.addModule("/ti/driverlib/OPA", {}, false);
 const OPA1          = OPA.addInstance();
 const OPA2          = OPA.addInstance();
@@ -195,6 +196,9 @@ GPIO4.$name                          = "Other";
 GPIO4.associatedPins[0].$name        = "REED_PULLUP";
 GPIO4.associatedPins[0].initialValue = "SET";
 GPIO4.associatedPins[0].pin.$assign  = "PA14";
+
+NONMAIN.nonmainWarning = true;
+NONMAIN.bslMode        = false;
 
 OPA1.advRRI                              = true;
 OPA1.advBW                               = "HIGH";

@@ -49,8 +49,11 @@ MEMORY
     FLASH            (RX)  : origin = 0x00000000,                 length = (FLASH_SIZE - EEPROM_SIZE)
     EEPROM           (RW)  : origin = (FLASH_SIZE - EEPROM_SIZE), length = EEPROM_SIZE
     SRAM             (RWX) : origin = 0x20000000,                 length = RAM_SIZE
-    //BCR_CONFIG       (R)   : origin = 0x41C00000,                 length = 0x000000FF
-    //BSL_CONFIG       (R)   : origin = 0x41C00100,                 length = 0x00000080
+#ifdef WITH_NONMAIN
+    /* Non-Main configuration memory */
+    BCR_CONFIG       (R)   : origin = 0x41C00000,                 length = 0x000000FF
+    BSL_CONFIG       (R)   : origin = 0x41C00100,                 length = 0x00000080
+#endif
 }
 
 SECTIONS
@@ -79,7 +82,12 @@ SECTIONS
     .bss    :   > SRAM
     .sysmem :   > SRAM
     .stack  :   > SRAM (HIGH)
-
-    //.BCRConfig  : {} > BCR_CONFIG
-    //.BSLConfig  : {} > BSL_CONFIG
+#ifdef WITH_NONMAIN
+    .BCRConfig  : {} > BCR_CONFIG
+    .BSLConfig  : {} > BSL_CONFIG
+#else
+    /* Treat them as dummy sections so they aren't allocated/loaded */
+    .BCRConfig  (DSECT) : {}
+    .BSLConfig  (DSECT) : {}
+#endif
 }

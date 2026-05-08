@@ -158,6 +158,9 @@ add_custom_command(TARGET SS3 POST_BUILD COMMAND
 target_compile_definitions(SS3 PRIVATE
     $<$<CONFIG:Debug>:NO_WDG NO_EEPROM_SAVE>
 )
+target_link_options(SS3 PRIVATE
+    $<$<CONFIG:Release>:LINKER:--define=WITH_NONMAIN>
+)
 
 target_compile_options(SS3 PRIVATE
     $<$<CONFIG:Debug>:-O0 -gdwarf-3>
