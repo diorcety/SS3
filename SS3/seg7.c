@@ -564,10 +564,10 @@ void seg7_loop(void) {
 
   pt_begin(&seg7_process_pt);
 
-  DL_GPIO_setPins(GPIOA, Screen_Reset_PIN | Screen_BL_PIN);
+  DL_GPIO_setPins(Screen_PORT, Screen_Reset_PIN | Screen_BL_PIN);
   timer_start(&delay_timer, 1, true); /* 1 ms */
   pt_wait(&seg7_process_pt, timer_elapsed(&delay_timer));
-  DL_GPIO_clearPins(GPIOA, Screen_Reset_PIN);
+  DL_GPIO_clearPins(Screen_PORT, Screen_Reset_PIN);
 
   for (;;) {
     // Wait trigger

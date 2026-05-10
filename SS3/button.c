@@ -38,9 +38,9 @@ void button_init(void) {
   press_active = false;
   event = EVENT_NONE;
 
-  pins_previous_state = DL_GPIO_readPins(GPIOA, Buttons_A_PIN | Buttons_B_PIN);
+  pins_previous_state = DL_GPIO_readPins(Buttons_PORT, Buttons_A_PIN | Buttons_B_PIN);
 
-  DL_GPIO_clearInterruptStatus(GPIOA, Buttons_A_PIN | Buttons_B_PIN | Buttons_P_PIN);
+  DL_GPIO_clearInterruptStatus(Buttons_PORT, Buttons_A_PIN | Buttons_B_PIN | Buttons_P_PIN);
   NVIC_ClearPendingIRQ(Buttons_INT_IRQN);
 }
 
@@ -74,8 +74,8 @@ void button_loop(void) {
 Event button_get_event(void) { return event; }
 
 void Buttons_INST_IRQHandler(void) {
-  uint32_t pins_current_state = DL_GPIO_readPins(GPIOA, Buttons_A_PIN | Buttons_B_PIN | Buttons_P_PIN);
-  DL_GPIO_clearInterruptStatus(GPIOA, Buttons_A_PIN | Buttons_B_PIN | Buttons_P_PIN);
+  uint32_t pins_current_state = DL_GPIO_readPins(Buttons_PORT, Buttons_A_PIN | Buttons_B_PIN | Buttons_P_PIN);
+  DL_GPIO_clearInterruptStatus(Buttons_PORT, Buttons_A_PIN | Buttons_B_PIN | Buttons_P_PIN);
 
   bool new_a = (pins_current_state & Buttons_A_PIN);
   bool new_b = (pins_current_state & Buttons_B_PIN);

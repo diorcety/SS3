@@ -98,7 +98,7 @@ void acquisition_init(void) {
 #endif
 
   // Disable pull-ups
-  DL_GPIO_disableOutput(GPIOA, Other_REED_PULLUP_PIN);
+  DL_GPIO_disableOutput(Other_PORT, Other_REED_PULLUP_PIN);
   DL_OPA_setOutputPinState(SecondVRef_INST, OA_CFG_OUTPIN_DISABLED);
 }
 
@@ -233,7 +233,7 @@ void acquisition_step(void) {
   DL_TimerA_startCounter(MeasurementTimer_INST);
 
   // Enable pull-ups
-  DL_GPIO_enableOutput(GPIOA, Other_REED_PULLUP_PIN);
+  DL_GPIO_enableOutput(Other_PORT, Other_REED_PULLUP_PIN);
   DL_OPA_setOutputPinState(SecondVRef_INST, OA_CFG_OUTPIN_ENABLED);
 
   pt_yield(&acq_process_pt);
@@ -255,7 +255,7 @@ void acquisition_step(void) {
   DL_TimerA_startCounter(MeasurementTimer_INST);
 
   // Disable pull-ups
-  DL_GPIO_disableOutput(GPIOA, Other_REED_PULLUP_PIN);
+  DL_GPIO_disableOutput(Other_PORT, Other_REED_PULLUP_PIN);
   if (display_state != DISPLAY_STATE_ADJ_REFERENCE) {
     DL_OPA_setOutputPinState(SecondVRef_INST, OA_CFG_OUTPIN_DISABLED);
   }

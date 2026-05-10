@@ -74,7 +74,7 @@ int main(void) {
   SYSCFG_DL_init();
 
   // Can't be set by default in syscfg
-  DL_GPIO_disableOutput(GPIOA, Other_REED_PULLUP_PIN);
+  DL_GPIO_disableOutput(Other_PORT, Other_REED_PULLUP_PIN);
   DL_OPA_setOutputPinState(SecondVRef_INST, OA_CFG_OUTPIN_DISABLED);
 
   init();
