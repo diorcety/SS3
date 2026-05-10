@@ -52,8 +52,6 @@ public:
   void writeIndexedPixelsDouble(uint8_t *data, uint16_t *idx, uint32_t len) override;
   void writeYCbCrPixels(uint8_t *yData, uint8_t *cbData, uint8_t *crData, uint16_t w, uint16_t h) override;
 
-  void transaction_complete();
-
 protected:
   void flush_data_buf();
   GFX_INLINE void WRITE8BIT(uint8_t d);
@@ -81,21 +79,19 @@ private:
   bool _spi_tran_use_txdata;
 
   // Statically allocated 16-byte aligned buffers for DMA transfers
-  alignas(16) union {
+  alignas(32) union {
     uint8_t _buffer[MSPM0SPIDMA_MAX_PIXELS_AT_ONCE * 2];
     uint16_t _buffer16[MSPM0SPIDMA_MAX_PIXELS_AT_ONCE];
     uint32_t _buffer32[MSPM0SPIDMA_MAX_PIXELS_AT_ONCE / 2];
   };
 
-  alignas(16) union {
+  alignas(32) union {
     uint8_t _2nd_buffer[MSPM0SPIDMA_MAX_PIXELS_AT_ONCE * 2];
     uint16_t _2nd_buffer16[MSPM0SPIDMA_MAX_PIXELS_AT_ONCE];
     uint32_t _2nd_buffer32[MSPM0SPIDMA_MAX_PIXELS_AT_ONCE / 2];
   };
 
   uint16_t _data_buf_bit_idx = 0;
-
-  volatile bool _spi_ready;
 };
 
 #endif

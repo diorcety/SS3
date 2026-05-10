@@ -532,8 +532,6 @@ void seg7_update(void) {
 }
 
 void seg7_loop(void) {
-  NVIC_EnableIRQ(SPI_0_INST_INT_IRQN);
-
   if (new_acquisition) {
     IIR_FILTER_ADD(SEG7_MAIN_PERIOD_IIR_WINDOW, main_period_acc, main_period);
 
@@ -574,9 +572,7 @@ void seg7_loop(void) {
   DL_GPIO_clearPins(Screen_PORT, Screen_Reset_PIN);
 
   for (;;) {
-    // Wait trigger
-    pt_wait(&seg7_process_pt, trigger);
-    trigger = false;
+    pt_wait(&seg7_process_pt, !DL_SPI_isBusy(SPI_0_INST));
 
     // Detect setpoint changes
     if (heat_setpoint != previous_setpoint) {
@@ -592,16 +588,6 @@ void seg7_loop(void) {
   //
   // End of asynchronous part
   //
-}
-
-void seg7_INST_IRQHandler(void) {
-  switch (DL_SPI_getPendingInterrupt(SPI_0_INST)) {
-  case DL_SPI_IIDX_IDLE:
-    trigger = true;
-    break;
-  default:
-    break;
-  }
 }
 
 #endif

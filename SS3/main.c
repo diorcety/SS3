@@ -113,21 +113,6 @@ void GROUP1_IRQHandler(void) {
   Buttons_INST_IRQHandler();
 }
 
-#if defined(USE_SEG7)
-void seg7_INST_IRQHandler(void);
-#endif
-#if defined(USE_ST7789)
-void st7789_INST_IRQHandler(void);
-#endif
-void SPI_0_INST_IRQHandler(void) {
-#if defined(USE_SEG7)
-  seg7_INST_IRQHandler();
-#elif defined(USE_ST7789)
-  st7789_INST_IRQHandler();
-#else
-  ERROR_HANDLER();
-#endif
-}
 //
 // Error handlers
 //
