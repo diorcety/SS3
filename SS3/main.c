@@ -140,3 +140,9 @@ void SYSCFG_DL_PowerProtection_init(void) {}
 #endif
 
 void __cxa_pure_virtual(void) { ERROR_HANDLER(); }
+
+extern void CORU_ASSERT(bool valid) {
+  if (!valid) {
+    ERROR_HANDLER();
+  }
+}

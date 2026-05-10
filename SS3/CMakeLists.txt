@@ -44,6 +44,8 @@ add_link_options(
     -fno-rtti
 )
 
+add_definitions(-DCORU_NO_ASSERT -DCORU_NO_MALLOC)
+
 # ----------------------------------------------------------------------------------------------------------------------
 # Libraries
 # ----------------------------------------------------------------------------------------------------------------------
@@ -59,6 +61,16 @@ if(SCREEN STREQUAL "ST7789")
 
     fetchcontent_makeavailable(Arduino_GFX)
 
+    target_include_directories(Arduino_GFX PRIVATE
+        ${CMAKE_SOURCE_DIR}/arduino
+    )
+    target_compile_options(Arduino_GFX PRIVATE -w)
+
+    target_compile_options(Arduino_GFX PRIVATE
+        $<$<CONFIG:Debug>:-O0 -gdwarf-3>
+        $<$<CONFIG:Release>:-Os -gdwarf-3 -flto>
+    )
+
     fetchcontent_declare(
         coru
         GIT_REPOSITORY https://github.com/geky/coru.git
@@ -66,15 +78,6 @@ if(SCREEN STREQUAL "ST7789")
     )
 
     fetchcontent_makeavailable(coru)
-
-    target_include_directories(Arduino_GFX PRIVATE
-        ${CMAKE_SOURCE_DIR}/arduino
-    )
-    target_compile_options(Arduino_GFX PRIVATE -Os -w)
-
-    target_include_directories(Arduino_GFX PRIVATE
-        ${coru_SOURCE_DIR}
-    )
 endif()
 
 set(CMAKE_SYSTEM_NAME Generic)
@@ -211,8 +214,6 @@ if(SCREEN STREQUAL "ST7789")
     set_source_files_properties(
         ${coru_SOURCE_DIR}/coru.c
         ${coru_SOURCE_DIR}/coru_platform.c
-        PROPERTIES
-        COMPILE_DEFINITIONS NDEBUG
     )
 
     target_include_directories(SS3 PRIVATE

@@ -18,8 +18,8 @@ extern "C" {
  *                                                                                                                   *
  *********************************************************************************************************************/
 
-// static coru_t co;
-// static uint8_t co_stack[4096];
+static coru_t co;
+static uint8_t co_stack[4096];
 
 static timer_t delay_timer;
 
@@ -54,9 +54,9 @@ void st7789_coru(void *) {
     ERROR_HANDLER();
   }
 
-  display->fillScreen(RGB565_RED);
+  display->fillScreen(RGB565_BLUEVIOLET);
 
-  // Light the screen
+  // Enable backlight
   DL_GPIO_clearPins(Screen_PORT, Screen_BL_PIN);
 
   display->setCursor(10, 10);
@@ -76,17 +76,23 @@ extern "C" void st7789_init(void) {
 
   bus = new (bus_buffer) Arduino_MSPM0SPIDMA(
       SPI_0_INST, SPI_0_DMA_TX_CHAN_ID, Screen_PORT, Screen_CMD_PIN, GPIO_SPI_0_CS1_PORT, GPIO_SPI_0_CS1_PIN);
-  display = new (display_buffer) Arduino_ST7789(
-      bus, GFX_NOT_DEFINED /* RST */, 3 /* rotation */, true /* IPS */, 170 /* width */, 320 /* height */, 35, 0, 35, 0);
+  display = new (display_buffer) Arduino_ST7789(bus,
+                                                GFX_NOT_DEFINED /* RST */,
+                                                3 /* rotation */,
+                                                true /* IPS */,
+                                                170 /* width */,
+                                                320 /* height */,
+                                                35,
+                                                0,
+                                                35,
+                                                0);
 
   timer_init(&delay_timer);
-  // coru_create_inplace(&co, st7789_coru, NULL, co_stack, sizeof(co_stack));
-
-  st7789_coru(NULL);
+  coru_create_inplace(&co, st7789_coru, NULL, co_stack, sizeof(co_stack));
 }
 
 extern "C" void st7789_loop(void) {
-  // coru_resume(&co); // returns 0, prints hi!
+  coru_resume(&co); // returns 0, prints hi!
 }
 
 #endif

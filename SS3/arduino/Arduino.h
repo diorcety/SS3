@@ -5,28 +5,25 @@
 #include <stdint.h>
 #include <string>
 
-#include "coru.h"
+
+// Implementations
 #ifndef ERROR_HANDLER
-#define ERROR_HANDLER() error_handler()
-
 extern "C" void error_handler(void);
+#define ERROR_HANDLER() error_handler()
 #endif
 
-#define printf(...)
-#if 0
+extern "C" void coru_yield(void);
 static inline void yield() { coru_yield(); }
-#else
-static inline void yield() { }
-#endif
 static inline void delay(int delay) {
-
   extern volatile uint32_t systick_counter;
-
   uint32_t start = systick_counter;
   while ((systick_counter - start) < delay) {
     yield();
   }
 }
+
+// Stubs
+#define printf(...)
 #define __FlashStringHelper uint8_t
 #define String std::string
 static inline void pinMode(int a, int b) { ERROR_HANDLER(); }
