@@ -66,7 +66,7 @@ INTERP_TABLE(tc_inter_table, tc_adc_table, tc_value_table);
 static const float KTY_RATIO = (float)ADC_MAX;
 
 // From https://www.nxp.com/docs/en/data-sheet/KTY82_SER.pdf
-uint16_t kty_adc_table[] = {
+static const uint16_t kty_adc_table[] = {
     KTY_ADC_VALUE(515.0f),  KTY_ADC_VALUE(567.0f),  KTY_ADC_VALUE(624.0f),  KTY_ADC_VALUE(684.0f),
     KTY_ADC_VALUE(747.0f),  KTY_ADC_VALUE(815.0f),  KTY_ADC_VALUE(886.0f),  KTY_ADC_VALUE(961.0f),
     KTY_ADC_VALUE(1040.0f), KTY_ADC_VALUE(1122.0f), KTY_ADC_VALUE(1209.0f), KTY_ADC_VALUE(1299.0f),
