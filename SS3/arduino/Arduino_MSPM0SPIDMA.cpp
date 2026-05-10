@@ -581,10 +581,8 @@ GFX_INLINE void Arduino_MSPM0SPIDMA::POLL_START() {
       DL_SPI_transmitData8(_spi_inst, _spi_tran_tx_data[i]);
     }
   } else {
-#if 0
-    while (DL_DMA_isChannelEnabled(DMA, _dma_tx_ch)) {
-      yield();
-    }
+    // 1. ALWAYS disable the channel before changing its configuration
+    DL_DMA_disableChannel(DMA, _dma_tx_ch);
 
     // Hardware DMA Trigger for Buffers
     DL_DMA_setSrcAddr(DMA, _dma_tx_ch, (uint32_t)_spi_tran_tx_buffer);
@@ -593,29 +591,20 @@ GFX_INLINE void Arduino_MSPM0SPIDMA::POLL_START() {
 
     // Enabling channel will start transfer assuming SPI TX DMA request is active
     __DSB();
-    __ISB();
     DL_DMA_enableChannel(DMA, _dma_tx_ch);
-#else
-    DL_DMA_setTransferSize(DMA, _dma_tx_ch, bytes);
-    for (uint32_t i = 0; i < bytes; i++) {
-      while (!DL_SPI_isTXFIFOEmpty(_spi_inst)) {
-      }
-      DL_SPI_transmitData8(_spi_inst, _spi_tran_tx_buffer[i]);
-    }
-#endif
   }
 }
 
 GFX_INLINE void Arduino_MSPM0SPIDMA::POLL_END() {
-  if (_spi_tran_use_txdata) {
-    while (DL_SPI_isBusy(_spi_inst)) {
-      yield();
-    }
-  } else {
+  if (!_spi_tran_use_txdata) {
     // Wait for the SPI peripheral to finish shifting all data out of its FIFO
     while (DL_DMA_isChannelEnabled(DMA, _dma_tx_ch)) {
       yield();
     }
+  }
+
+  while (DL_SPI_isBusy(_spi_inst)) {
+    yield();
   }
 }
 

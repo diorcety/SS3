@@ -49,7 +49,7 @@ MEMORY
 {
     FLASH            (RX)  : origin = 0x00000000,                 length = (FLASH_SIZE - EEPROM_SIZE)
     EEPROM           (RW)  : origin = (FLASH_SIZE - EEPROM_SIZE), length = EEPROM_SIZE
-    SRAM             (RWX) : origin = 0x20000000,                 length = RAM_SIZE
+    SRAM             (RWX) : origin = 0x20200000,                 length = RAM_SIZE
 #ifdef WITH_NONMAIN
     /* Non-Main configuration memory */
     BCR_CONFIG       (R)   : origin = 0x41C00000,                 length = 0x000000FF
