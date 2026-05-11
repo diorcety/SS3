@@ -8,16 +8,8 @@
  *                                                 FUNCTIONS                                                         *
  *                                                                                                                   *
  *********************************************************************************************************************/
-
-#ifdef __cplusplus
-extern "C" {
-#endif
 void st7789_init(void);
 void st7789_loop(void);
-
-#ifdef __cplusplus
-}
-#endif
 
 #endif
 

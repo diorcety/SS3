@@ -7,7 +7,9 @@
  */
 Arduino_MSPM0SPIDMA::Arduino_MSPM0SPIDMA(SPI_Regs *spi_inst, int8_t dma_tx_ch, GPIO_Regs *dcPort, uint32_t dcPin,
                                          GPIO_Regs *csPort, uint32_t csPin)
-    : _spi_inst(spi_inst), _dma_tx_ch(dma_tx_ch), _dcPort(dcPort), _dcPin(dcPin), _csPort(csPort), _csPin(csPin) {}
+    : _spi_inst(spi_inst), _dma_tx_ch(dma_tx_ch), _dcPort(dcPort), _dcPin(dcPin), _csPort(csPort), _csPin(csPin) {
+  (void)(_dma_tx_ch);
+}
 
 /**
  * @brief begin
@@ -374,6 +376,8 @@ void Arduino_MSPM0SPIDMA::writeBytes(uint8_t *data, uint32_t len) {
   }
 }
 
+#if !defined(LITTLE_FOOT_PRINT)
+
 void Arduino_MSPM0SPIDMA::writeIndexedPixels(uint8_t *data, uint16_t *idx, uint32_t len) {
   if (_dcPort == nullptr) // 9-bit SPI
   {
@@ -511,6 +515,8 @@ void Arduino_MSPM0SPIDMA::writeYCbCrPixels(uint8_t *yData, uint8_t *cbData, uint
   }
 }
 
+#endif
+
 void Arduino_MSPM0SPIDMA::flush_data_buf() {
   _spi_tran_tx_buffer = (uint8_t *)_buffer32;
   _spi_tran_length = _data_buf_bit_idx;
@@ -570,17 +576,21 @@ GFX_INLINE void Arduino_MSPM0SPIDMA::CS_LOW(void) {
     DL_GPIO_clearPins(_csPort, _csPin);
 }
 
+#define DISABLE_DMA
+
 GFX_INLINE void Arduino_MSPM0SPIDMA::POLL_START() {
   uint32_t bytes = (_spi_tran_length + 7) / 8; // Convert bits to bytes
 
   if (_spi_tran_use_txdata) {
     // Fast Polled I/O for 1-4 bytes (e.g. single Commands/Data)
     for (uint32_t i = 0; i < bytes; i++) {
-      while (!DL_SPI_isTXFIFOEmpty(_spi_inst)) {
+      while (DL_SPI_isTXFIFOFull(_spi_inst)) {
+        yield();
       }
       DL_SPI_transmitData8(_spi_inst, _spi_tran_tx_data[i]);
     }
   } else {
+#ifndef DISABLE_DMA
     // 1. ALWAYS disable the channel before changing its configuration
     DL_DMA_disableChannel(DMA, _dma_tx_ch);
 
@@ -592,16 +602,26 @@ GFX_INLINE void Arduino_MSPM0SPIDMA::POLL_START() {
     // Enabling channel will start transfer assuming SPI TX DMA request is active
     __DSB();
     DL_DMA_enableChannel(DMA, _dma_tx_ch);
+#else
+    for (uint32_t i = 0; i < bytes; i++) {
+      while (DL_SPI_isTXFIFOFull(_spi_inst)) {
+        yield();
+      }
+      DL_SPI_transmitData8(_spi_inst, _spi_tran_tx_buffer[i]);
+    }
+#endif
   }
 }
 
 GFX_INLINE void Arduino_MSPM0SPIDMA::POLL_END() {
+#ifndef DISABLE_DMA
   if (!_spi_tran_use_txdata) {
     // Wait for the SPI peripheral to finish shifting all data out of its FIFO
     while (DL_DMA_isChannelEnabled(DMA, _dma_tx_ch)) {
       yield();
     }
   }
+#endif
 
   while (DL_SPI_isBusy(_spi_inst)) {
     yield();

@@ -12,8 +12,12 @@ extern "C" void error_handler(void);
 #define ERROR_HANDLER() error_handler()
 #endif
 
+#if 1
 extern "C" void coru_yield(void);
 static inline void yield() { coru_yield(); }
+#else
+static inline void yield() { }
+#endif
 static inline void delay(int delay) {
   extern volatile uint32_t systick_counter;
   uint32_t start = systick_counter;

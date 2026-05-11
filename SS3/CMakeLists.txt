@@ -44,7 +44,7 @@ add_link_options(
     -fno-rtti
 )
 
-add_definitions(-DCORU_NO_ASSERT -DCORU_NO_MALLOC)
+add_definitions(-DCORU_NO_ASSERT -DCORU_NO_MALLOC -DLITTLE_FOOT_PRINT)
 
 # ----------------------------------------------------------------------------------------------------------------------
 # Libraries
@@ -60,6 +60,8 @@ if(SCREEN STREQUAL "ST7789")
     )
 
     fetchcontent_makeavailable(Arduino_GFX)
+
+    target_compile_definitions(Arduino_GFX PUBLIC U8G2_FONT_SUPPORT)
 
     target_include_directories(Arduino_GFX PRIVATE
         ${CMAKE_SOURCE_DIR}/arduino
@@ -101,11 +103,16 @@ add_sysconfig_target(
 # ----------------------------------------------------------------------------------------------------------------------
 # Sources
 # ----------------------------------------------------------------------------------------------------------------------
-file(GLOB PROJECT_SOURCES
+# C sources
+file(GLOB PROJECT_C_SOURCES
     ${CMAKE_SOURCE_DIR}/*.c
+    ${CMAKE_SOURCE_DIR}/ti/eeprom/emulation_type_b/*.c
+)
+
+# C++ sources
+file(GLOB PROJECT_CPP_SOURCES
     ${CMAKE_SOURCE_DIR}/*.cpp
     ${CMAKE_SOURCE_DIR}/arduino/*.cpp
-    ${CMAKE_SOURCE_DIR}/ti/eeprom/emulation_type_b/*.c
 )
 
 set(TI_STARTUP_FILE ${SDK_ROOT}/source/ti/devices/msp/m0p/startup_system_files/ticlang/startup_${TI_DEVICE}_ticlang.c)
@@ -114,7 +121,7 @@ set(TI_STARTUP_FILE ${SDK_ROOT}/source/ti/devices/msp/m0p/startup_system_files/t
 # Executable
 # ----------------------------------------------------------------------------------------------------------------------
 add_executable(SS3
-    ${PROJECT_SOURCES}
+    ${PROJECT_C_SOURCES}
     $<TARGET_PROPERTY:${SYSCONFIG_TARGET},SYSCONFIG_GEN_CFILES>
     ${TI_STARTUP_FILE}
 )
@@ -201,11 +208,15 @@ target_link_libraries(SS3 PRIVATE
     $<TARGET_PROPERTY:${SYSCONFIG_TARGET},SYSCONFIG_GEN_LNKCMD>
 )
 
+# ----------------------------------------------------------------------------------------------------------------------
+# Libraries
+# ----------------------------------------------------------------------------------------------------------------------
 if(SCREEN STREQUAL "ST7789")
     target_link_libraries(SS3 PRIVATE Arduino_GFX)
     target_include_directories(SS3 SYSTEM PRIVATE
         ${arduino_gfx_SOURCE_DIR}/src
     )
+
     # coru has no CMakeLists.txt, so add sources manually
     target_sources(SS3 PRIVATE
         ${coru_SOURCE_DIR}/coru.c
@@ -219,6 +230,51 @@ if(SCREEN STREQUAL "ST7789")
     target_include_directories(SS3 PRIVATE
         ${coru_SOURCE_DIR}
     )
+
+    include(cmake/U8g2Font.cmake)
+
+    u8g2_generate_font(
+        TARGET font_logisoso160
+        FONT_NAME logisoso160
+
+        INPUT
+        ${CMAKE_SOURCE_DIR}/resources/Logisoso-160.bdf
+
+        GLYPHS
+        45,48-57,141
+    )
+
+
+    u8g2_generate_font(
+        TARGET font_logisoso64
+        FONT_NAME logisoso64
+
+        INPUT
+        ${CMAKE_SOURCE_DIR}/resources/Logisoso-64.bdf
+
+        GLYPHS
+        32,128-131,140-142
+    )
+
+    u8g2_generate_font(
+        TARGET font_logisoso32
+        FONT_NAME logisoso32
+
+        INPUT
+        ${CMAKE_SOURCE_DIR}/resources/Logisoso-32.bdf
+
+        GLYPHS
+        32,48-57,64-90,97-122,143-145,150-154,176
+    )
+
+    target_include_directories(SS3 PRIVATE
+        ${font_logisoso64_INCLUDE} ${font_logisoso160_INCLUDE} ${font_logisoso32_INCLUDE}
+    )
+
+    add_dependencies(SS3 font_logisoso64 font_logisoso160 font_logisoso32)
+
+    # Add c++ sources
+    target_sources(SS3 PRIVATE ${PROJECT_CPP_SOURCES})
 endif()
 
 # ----------------------------------------------------------------------------------------------------------------------
