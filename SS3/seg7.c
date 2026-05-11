@@ -14,7 +14,6 @@
 #include "util.h"
 #include "zcd.h"
 
-#include <stdlib.h>
 #include <string.h>
 
 /*********************************************************************************************************************
@@ -272,7 +271,7 @@ void display_number(DisplayMode display_mode, int num, bool force) {
     break;
   }
 
-  int temp = abs(num);
+  int temp = ABS(num);
   bool has_sign = false;
 
   while (j >= 0) {
@@ -551,8 +550,8 @@ void seg7_loop(void) {
     int tmp_left_temperature_filtred = IIR_FILTER_GET(SEG7_LEFT_TEMPERATURE_IIR_WINDOW, left_temperature_acc);
 
     // Only update above threshold or after some delay: avoid flikering
-    if (abs(tmp_right_temperature_filtred - right_temperature_filtred) >= SEG7_TEMPERATURE_SLOW_THRESHOLD_DEG ||
-        abs(tmp_left_temperature_filtred - left_temperature_filtred) >= SEG7_TEMPERATURE_SLOW_THRESHOLD_DEG ||
+    if (ABS(tmp_right_temperature_filtred - right_temperature_filtred) >= SEG7_TEMPERATURE_SLOW_THRESHOLD_DEG ||
+        ABS(tmp_left_temperature_filtred - left_temperature_filtred) >= SEG7_TEMPERATURE_SLOW_THRESHOLD_DEG ||
         systick_elapsed(previous_temperature_update, SEG7_TEMPERATURE_SLOW_UPDATE_MS)) {
       right_temperature_filtred = tmp_right_temperature_filtred;
       left_temperature_filtred = tmp_left_temperature_filtred;
