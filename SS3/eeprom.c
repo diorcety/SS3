@@ -1,6 +1,8 @@
 #include "eeprom.h"
 #include "main.h"
+#include "util.h"
 
+#ifndef SIMULATION
 #include <ti/eeprom/emulation_type_b/eeprom_emulation_type_b.h>
 
 /*********************************************************************************************************************
@@ -41,3 +43,18 @@ void eeprom_loop(void) {
     gEEPROMTypeBEraseFlag = 0;
   }
 }
+
+#else
+void eeprom_init(void) {}
+void eeprom_loop(void) {}
+bool eeprom_read(uint16_t variable_id, uint32_t *value) {
+  UNUSED(variable_id);
+  UNUSED(value);
+  return false;
+}
+bool eeprom_write(uint16_t variable_id, uint32_t value) {
+  UNUSED(variable_id);
+  UNUSED(value);
+  return false;
+}
+#endif

@@ -8,15 +8,23 @@ list(APPEND CMAKE_MODULE_PATH ${CMAKE_SOURCE_DIR}/cmake)
 
 
 set(SCREEN "SEG7" CACHE STRING "Display type (SEG7 or ST7789)")
+option(SIMULATION "Enable simulation mode" OFF)
 
 # ----------------------------------------------------------------------------------------------------------------------
 # Detect TI Tools
 # ----------------------------------------------------------------------------------------------------------------------
-set(TI_SDK "mspm0")
-include(TITools)
+if(NOT SIMULATION)
+    set(TI_SDK "mspm0")
+    include(TITools)
 
-set(CMAKE_C_COMPILER ${TI_ARM_CLANG})
-set(CMAKE_CXX_COMPILER ${TI_ARM_CLANG})
+    set(CMAKE_C_COMPILER ${TI_ARM_CLANG})
+    set(CMAKE_CXX_COMPILER ${TI_ARM_CLANG})
+else()
+    set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -m32")
+    set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -m32")
+    set(CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} -m32")
+    set(CMAKE_SHARED_LINKER_FLAGS "${CMAKE_SHARED_LINKER_FLAGS} -m32")
+endif()
 
 
 # ----------------------------------------------------------------------------------------------------------------------
@@ -24,27 +32,21 @@ set(CMAKE_CXX_COMPILER ${TI_ARM_CLANG})
 # ----------------------------------------------------------------------------------------------------------------------
 project(SS3 LANGUAGES C CXX)
 
-add_compile_options(
-    -march=thumbv6m
-    -mcpu=cortex-m0plus
-    -mfloat-abi=soft
-    -mlittle-endian
-    -mthumb
-    -mmathacl
-)
+if(NOT SIMULATION)
+    add_compile_options(
+        -march=thumbv6m
+        -mcpu=cortex-m0plus
+        -mfloat-abi=soft
+        -mlittle-endian
+        -mthumb
+        -mmathacl
+    )
+    add_definitions(-DCORU_NO_ASSERT)
+else()
+    add_definitions(-DSIMULATION -DCORU_ON_VALGRIND)
+endif()
 
-add_compile_options(
-    -fno-exceptions
-    -fno-rtti
-    -fno-threadsafe-statics
-)
-
-add_link_options(
-    -fno-exceptions
-    -fno-rtti
-)
-
-add_definitions(-DCORU_NO_ASSERT -DCORU_NO_MALLOC -DLITTLE_FOOT_PRINT)
+add_definitions(-DCORU_NO_MALLOC -DLITTLE_FOOT_PRINT)
 
 # ----------------------------------------------------------------------------------------------------------------------
 # Libraries
@@ -73,9 +75,15 @@ if(SCREEN STREQUAL "ST7789")
         $<$<CONFIG:Release>:-Os -gdwarf-3 -flto>
     )
 
+    target_compile_options(Arduino_GFX PRIVATE
+        $<$<COMPILE_LANGUAGE:CXX>:-fno-exceptions>
+        $<$<COMPILE_LANGUAGE:CXX>:-fno-rtti>
+        $<$<COMPILE_LANGUAGE:CXX>:-fno-threadsafe-statics>
+    )
+
     fetchcontent_declare(
         coru
-        GIT_REPOSITORY https://github.com/geky/coru.git
+        GIT_REPOSITORY https://github.com/diorcety/coru.git
         GIT_TAG master
     )
 
@@ -89,16 +97,18 @@ set(TI_DEVICE "mspm0g150x")
 # ----------------------------------------------------------------------------------------------------------------------
 # SysConfig
 # ----------------------------------------------------------------------------------------------------------------------
-include(SysConfig)
+if(NOT SIMULATION)
+    include(SysConfig)
 
-set(SYSCONFIG_INPUT ${CMAKE_SOURCE_DIR}/SS3.syscfg)
-set(SYSCONFIG_TARGET SS3_syscfg)
+    set(SYSCONFIG_INPUT ${CMAKE_SOURCE_DIR}/SS3.syscfg)
+    set(SYSCONFIG_TARGET SS3_syscfg)
 
-add_sysconfig_target(
-    ${SDK_ROOT}
-    ${SYSCONFIG_TARGET}
-    ${SYSCONFIG_INPUT}
-)
+    add_sysconfig_target(
+        ${SDK_ROOT}
+        ${SYSCONFIG_TARGET}
+        ${SYSCONFIG_INPUT}
+    )
+endif()
 
 # ----------------------------------------------------------------------------------------------------------------------
 # Sources
@@ -106,8 +116,17 @@ add_sysconfig_target(
 # C sources
 file(GLOB PROJECT_C_SOURCES
     ${CMAKE_SOURCE_DIR}/*.c
-    ${CMAKE_SOURCE_DIR}/ti/eeprom/emulation_type_b/*.c
 )
+if(NOT SIMULATION)
+    list(FILTER PROJECT_C_SOURCES EXCLUDE REGEX "simulation.*")
+endif()
+
+if(NOT SIMULATION)
+    file(GLOB EEPROM_SOURCES
+        ${CMAKE_SOURCE_DIR}/ti/eeprom/emulation_type_b/*.c
+    )
+    list(APPEND PROJECT_C_SOURCES ${EEPROM_SOURCES})
+endif()
 
 # C++ sources
 file(GLOB PROJECT_CPP_SOURCES
@@ -122,12 +141,12 @@ set(TI_STARTUP_FILE ${SDK_ROOT}/source/ti/devices/msp/m0p/startup_system_files/t
 # ----------------------------------------------------------------------------------------------------------------------
 add_executable(SS3
     ${PROJECT_C_SOURCES}
-    $<TARGET_PROPERTY:${SYSCONFIG_TARGET},SYSCONFIG_GEN_CFILES>
-    ${TI_STARTUP_FILE}
 )
-
 # Ensure SysConfig runs first
-add_dependencies(SS3 ${SYSCONFIG_TARGET})
+if(NOT SIMULATION)
+    target_sources(SS3 PRIVATE $<TARGET_PROPERTY:${SYSCONFIG_TARGET},SYSCONFIG_GEN_CFILES> ${TI_STARTUP_FILE})
+    add_dependencies(SS3 ${SYSCONFIG_TARGET})
+endif()
 
 # ----------------------------------------------------------------------------------------------------------------------
 # Compile definitions
@@ -140,9 +159,11 @@ target_compile_definitions(SS3 PRIVATE
 # ----------------------------------------------------------------------------------------------------------------------
 # Compile options
 # ----------------------------------------------------------------------------------------------------------------------
-target_compile_options(SS3 PRIVATE
-    @$<TARGET_PROPERTY:${SYSCONFIG_TARGET},SYSCONFIG_GEN_COMPILER_OPTS>
-)
+if(NOT SIMULATION)
+    target_compile_options(SS3 PRIVATE
+        @$<TARGET_PROPERTY:${SYSCONFIG_TARGET},SYSCONFIG_GEN_COMPILER_OPTS>
+    )
+endif()
 
 # ----------------------------------------------------------------------------------------------------------------------
 # Extra compile options
@@ -161,6 +182,7 @@ target_compile_options(SS3 PRIVATE
     -Wno-language-extension-token
     -Wno-c2y-extensions
     -Wno-empty-translation-unit
+    -Wno-gnu-zero-variadic-macro-arguments
 )
 
 # ----------------------------------------------------------------------------------------------------------------------
@@ -169,44 +191,48 @@ target_compile_options(SS3 PRIVATE
 target_include_directories(SS3 PRIVATE
     ${CMAKE_SOURCE_DIR}
     ${CMAKE_SOURCE_DIR}/arduino
-    $<TARGET_PROPERTY:${SYSCONFIG_TARGET},SYSCONFIG_GENDIR>
 )
+if(NOT SIMULATION)
+    target_include_directories(SS3 PRIVATE
+        $<TARGET_PROPERTY:${SYSCONFIG_TARGET},SYSCONFIG_GENDIR>
+    )
 
-target_include_directories(SS3 SYSTEM PRIVATE
-    ${SDK_ROOT}/source/third_party/CMSIS/Core/Include
-    ${SDK_ROOT}/source
-)
+    target_include_directories(SS3 SYSTEM PRIVATE
+        ${SDK_ROOT}/source/third_party/CMSIS/Core/Include
+        ${SDK_ROOT}/source
+    )
 
-# ----------------------------------------------------------------------------------------------------------------------
-# Link directories
-# ----------------------------------------------------------------------------------------------------------------------
-target_link_directories(SS3 PRIVATE
-    ${SDK_ROOT}/source
-    $<TARGET_PROPERTY:${SYSCONFIG_TARGET},SYSCONFIG_GENDIR>
-    ${TI_ARM_CLANG_LIB_DIR}
-)
+    # ----------------------------------------------------------------------------------------------------------------------
+    # Link directories
+    # ----------------------------------------------------------------------------------------------------------------------
+    target_link_directories(SS3 PRIVATE
+        ${SDK_ROOT}/source
+        $<TARGET_PROPERTY:${SYSCONFIG_TARGET},SYSCONFIG_GENDIR>
+        ${TI_ARM_CLANG_LIB_DIR}
+    )
 
-# ----------------------------------------------------------------------------------------------------------------------
-# Link options
-# ----------------------------------------------------------------------------------------------------------------------
-target_link_options(SS3 PRIVATE
-    -Wl,-m=SS3.map
+    # ----------------------------------------------------------------------------------------------------------------------
+    # Link options
+    # ----------------------------------------------------------------------------------------------------------------------
+    target_link_options(SS3 PRIVATE
+        -Wl,-m=SS3.map
 
-    -Wl,--diag_wrap=off
-    -Wl,--display_error_number
-    -Wl,--warn_sections
-    -Wl,--rom_model
+        -Wl,--diag_wrap=off
+        -Wl,--display_error_number
+        -Wl,--warn_sections
+        -Wl,--rom_model
 
-    -Wl,--xml_link_info=SS3_linkInfo.xml
-)
+        -Wl,--xml_link_info=SS3_linkInfo.xml
+    )
 
-# ----------------------------------------------------------------------------------------------------------------------
-# Linker script + libraries
-# ----------------------------------------------------------------------------------------------------------------------
-target_link_libraries(SS3 PRIVATE
-    ${CMAKE_SOURCE_DIR}/device_linker.cmd
-    $<TARGET_PROPERTY:${SYSCONFIG_TARGET},SYSCONFIG_GEN_LNKCMD>
-)
+    # ----------------------------------------------------------------------------------------------------------------------
+    # Linker script + libraries
+    # ----------------------------------------------------------------------------------------------------------------------
+    target_link_libraries(SS3 PRIVATE
+        ${CMAKE_SOURCE_DIR}/device_linker.cmd
+        $<TARGET_PROPERTY:${SYSCONFIG_TARGET},SYSCONFIG_GEN_LNKCMD>
+    )
+endif()
 
 # ----------------------------------------------------------------------------------------------------------------------
 # Libraries
@@ -275,17 +301,27 @@ if(SCREEN STREQUAL "ST7789")
 
     # Add c++ sources
     target_sources(SS3 PRIVATE ${PROJECT_CPP_SOURCES})
+
+    target_compile_options(SS3 PRIVATE
+        $<$<COMPILE_LANGUAGE:CXX>:-fno-exceptions>
+        $<$<COMPILE_LANGUAGE:CXX>:-fno-rtti>
+        $<$<COMPILE_LANGUAGE:CXX>:-fno-threadsafe-statics>
+    )
+
+
 endif()
 
 # ----------------------------------------------------------------------------------------------------------------------
 # Post-build: generate ELF
 # ----------------------------------------------------------------------------------------------------------------------
-add_custom_command(TARGET SS3 POST_BUILD COMMAND
-    ${TI_ARM_OBJCOPY}
-    --remove-section=.TI.phattrs
-    $<TARGET_FILE:SS3>
-    $<TARGET_FILE_DIR:SS3>/$<TARGET_FILE_BASE_NAME:SS3>.elf
-)
+if(NOT SIMULATION)
+    add_custom_command(TARGET SS3 POST_BUILD COMMAND
+        ${TI_ARM_OBJCOPY}
+        --remove-section=.TI.phattrs
+        $<TARGET_FILE:SS3>
+        $<TARGET_FILE_DIR:SS3>/$<TARGET_FILE_BASE_NAME:SS3>.elf
+    )
+endif()
 
 # ----------------------------------------------------------------------------------------------------------------------
 # Debug vs Release
@@ -298,7 +334,7 @@ target_link_options(SS3 PRIVATE
 )
 
 target_compile_options(SS3 PRIVATE
-    $<$<CONFIG:Debug>:-O0 -gdwarf-3>
+    $<$<CONFIG:Debug>:-O0 -gdwarf-3 -fno-omit-frame-pointer>
     $<$<CONFIG:Release>:-Os -gdwarf-3 -flto>
 )
 

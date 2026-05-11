@@ -576,7 +576,7 @@ GFX_INLINE void Arduino_MSPM0SPIDMA::CS_LOW(void) {
     DL_GPIO_clearPins(_csPort, _csPin);
 }
 
-#define DISABLE_DMA
+//#define DISABLE_DMA
 
 GFX_INLINE void Arduino_MSPM0SPIDMA::POLL_START() {
   uint32_t bytes = (_spi_tran_length + 7) / 8; // Convert bits to bytes

@@ -114,3 +114,4 @@ void heat_toggle(void) {
 }
 
 void heat_error(void) { heat_state = HEAT_STATE_ERROR; }
+

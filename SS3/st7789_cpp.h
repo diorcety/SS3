@@ -15,7 +15,7 @@ extern "C" {
 
 /* Lifecycle */
 void st7789_init_screen(uint8_t r, bool ips, int16_t w, int16_t h, uint8_t col_offset1, uint8_t row_offset1,
-                 uint8_t col_offset2, uint8_t row_offset2);
+                        uint8_t col_offset2, uint8_t row_offset2);
 
 /* 1:1 wrappers */
 void st7889_fill_screen(uint16_t color);

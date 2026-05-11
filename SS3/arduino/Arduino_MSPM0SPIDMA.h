@@ -9,8 +9,7 @@
 
 #include "SPI.h"
 
-#include <ti/devices/msp/msp.h>
-#include <ti/driverlib/driverlib.h>
+#include "board.h"
 
 #ifndef MSPM0SPIDMA_MAX_PIXELS_AT_ONCE
 #define MSPM0SPIDMA_MAX_PIXELS_AT_ONCE 1024
