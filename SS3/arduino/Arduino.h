@@ -1,11 +1,10 @@
 #ifndef ARDUINO_H__
 #define ARDUINO_H__
 
+#include <math.h>
 #include <stddef.h>
 #include <stdint.h>
-#include <math.h>
 #include <string>
-
 
 // Implementations
 #ifndef ERROR_HANDLER
@@ -13,12 +12,13 @@ extern "C" void error_handler(void);
 #define ERROR_HANDLER() error_handler()
 #endif
 
-#if 1
+#ifndef CORU_DISABLED
 extern "C" void coru_yield(void);
 static inline void yield() { coru_yield(); }
 #else
-static inline void yield() { }
+static inline void yield() {}
 #endif
+extern "C" {
 static inline void delay(int delay) {
   extern volatile uint32_t systick_counter;
   uint32_t start = systick_counter;
@@ -26,7 +26,7 @@ static inline void delay(int delay) {
     yield();
   }
 }
-
+}
 // Stubs
 #define printf(...)
 #define __FlashStringHelper uint8_t

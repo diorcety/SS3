@@ -5,6 +5,7 @@
 
 extern "C" {
 #include "board.h"
+#include "tick.h"
 }
 
 /*********************************************************************************************************************
@@ -26,7 +27,7 @@ static Arduino_ST7789 *st7889;
  *********************************************************************************************************************/
 
 void st7789_init_screen(uint8_t r, bool ips, int16_t w, int16_t h, uint8_t col_offset1, uint8_t row_offset1,
-                 uint8_t col_offset2, uint8_t row_offset2) {
+                        uint8_t col_offset2, uint8_t row_offset2) {
   DL_GPIO_initPeripheralOutputFunction(GPIO_SPI_0_IOMUX_CS1, IOMUX_PINCM8_PF_GPIOA_DIO03);
   DL_GPIO_setPins(GPIO_SPI_0_CS1_PORT, GPIO_SPI_0_CS1_PIN);
   DL_GPIO_enableOutput(GPIO_SPI_0_CS1_PORT, GPIO_SPI_0_CS1_PIN);
@@ -45,6 +46,21 @@ void st7789_init_screen(uint8_t r, bool ips, int16_t w, int16_t h, uint8_t col_o
                                               col_offset2,
                                               row_offset2);
 
+  DL_GPIO_setPins(Screen_PORT, Screen_Reset_PIN | Screen_BL_PIN);
+
+  tick_timer_t delay_timer;
+  tick_timer_init(&delay_timer);
+  tick_timer_start(&delay_timer, 2, true); /* minimum 1 ms */
+  while (!tick_timer_elapsed(&delay_timer)) {
+    yield();
+  }
+  DL_GPIO_clearPins(Screen_PORT, Screen_Reset_PIN);
+
+  tick_timer_start(&delay_timer, ST7789_RST_DELAY, true); /* ST7789_RST_DELAY ms */
+  while (!tick_timer_elapsed(&delay_timer)) {
+    yield();
+  }
+
   if (!st7889->begin()) {
     ERROR_HANDLER();
   }
@@ -56,5 +72,6 @@ void st7889_draw_line(int16_t x0, int16_t y0, int16_t x1, int16_t y1, uint16_t c
 }
 void st7889_set_font(const uint8_t *font) { st7889->setFont(font); }
 void st7889_set_cursor(int16_t x, int16_t y) { st7889->setCursor(x, y); }
-void st7889_set_text_color(uint16_t color) { st7889->setTextColor(color); }
+void st7889_set_text_color(uint16_t fg_color, uint16_t bg_color) { st7889->setTextColor(fg_color, bg_color); }
+void st7889_set_text_size(uint8_t size) { st7889->setTextSize(size); }
 void st7889_print(const char *str) { st7889->print(str); }

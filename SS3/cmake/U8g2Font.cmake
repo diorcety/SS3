@@ -77,7 +77,6 @@ function(u8g2_generate_font)
         OUTPUT ${OUTPUT_C}
 
         COMMAND ${U8G2_BDFCONV}
-        -f 1
         -r
         -m "${GLYPH_MAP}"
         ${U8G2_EXTRA_ARGS}

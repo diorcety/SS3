@@ -22,8 +22,9 @@ void st7889_fill_screen(uint16_t color);
 void st7889_draw_line(int16_t x0, int16_t y0, int16_t x1, int16_t y1, uint16_t color);
 void st7889_set_font(const uint8_t *font);
 void st7889_set_cursor(int16_t x, int16_t y);
-void st7889_set_text_color(uint16_t color);
+void st7889_set_text_color(uint16_t fg_color, uint16_t bg_color);
 void st7889_print(const char *str);
+void st7889_set_text_size(uint8_t size);
 
 #ifdef __cplusplus
 }

@@ -260,44 +260,56 @@ if(SCREEN STREQUAL "ST7789")
     include(cmake/U8g2Font.cmake)
 
     u8g2_generate_font(
-        TARGET font_logisoso160
-        FONT_NAME logisoso160
+        TARGET font_inconsolata60
+        FONT_NAME inconsolata60
 
         INPUT
-        ${CMAKE_SOURCE_DIR}/resources/Logisoso-160.bdf
+        ${CMAKE_SOURCE_DIR}/resources/InconsolataLGC-Bold-60.bdf
 
         GLYPHS
-        45,48-57,141
+        32,45,48-57,141,146
+
+        EXTRA_ARGS
+        -f 1
+        -b 2
+    )
+
+    u8g2_generate_font(
+        TARGET font_inconsolata48
+        FONT_NAME inconsolata48
+
+        INPUT
+        ${CMAKE_SOURCE_DIR}/resources/InconsolataLGC-Bold-48.bdf
+
+        GLYPHS
+        32,128-131,140,142
+
+        EXTRA_ARGS
+        -f 1
+        -b 2
     )
 
 
     u8g2_generate_font(
-        TARGET font_logisoso64
-        FONT_NAME logisoso64
+        TARGET font_inconsolata24
+        FONT_NAME inconsolata24
 
         INPUT
-        ${CMAKE_SOURCE_DIR}/resources/Logisoso-64.bdf
-
-        GLYPHS
-        32,128-131,140-142
-    )
-
-    u8g2_generate_font(
-        TARGET font_logisoso32
-        FONT_NAME logisoso32
-
-        INPUT
-        ${CMAKE_SOURCE_DIR}/resources/Logisoso-32.bdf
+        ${CMAKE_SOURCE_DIR}/resources/InconsolataLGC-Bold-24.bdf
 
         GLYPHS
         32,48-57,64-90,97-122,143-145,150-154,176
+
+        EXTRA_ARGS
+        -f 1
+        -b 2
     )
 
     target_include_directories(SS3 PRIVATE
-        ${font_logisoso64_INCLUDE} ${font_logisoso160_INCLUDE} ${font_logisoso32_INCLUDE}
+        ${font_inconsolata24_INCLUDE} ${font_inconsolata48_INCLUDE} ${font_inconsolata60_INCLUDE}
     )
 
-    add_dependencies(SS3 font_logisoso64 font_logisoso160 font_logisoso32)
+    add_dependencies(SS3 font_inconsolata24 font_inconsolata48 font_inconsolata60)
 
     # Add c++ sources
     target_sources(SS3 PRIVATE ${PROJECT_CPP_SOURCES})
