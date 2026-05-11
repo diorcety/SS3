@@ -14,9 +14,9 @@ volatile uint32_t systick_counter = 0;
  *                                                                                                                   *
  *********************************************************************************************************************/
 
-void timer_init(volatile timer_t *t) { t->armed = false; }
+void tick_timer_init(volatile tick_timer_t *t) { t->armed = false; }
 
-void timer_start(volatile timer_t *t, uint32_t timeout, bool restart) {
+void tick_timer_start(volatile tick_timer_t *t, uint32_t timeout, bool restart) {
   if (!restart && t->armed)
     return;
   t->timeout = timeout;
@@ -24,12 +24,12 @@ void timer_start(volatile timer_t *t, uint32_t timeout, bool restart) {
   t->armed = true;
 }
 
-uint32_t timer_stop(volatile timer_t *t) {
+uint32_t tick_timer_stop(volatile tick_timer_t *t) {
   t->armed = false;
   return systick_counter - t->start;
 }
 
-bool timer_elapsed(volatile timer_t *t) {
+bool tick_timer_elapsed(volatile tick_timer_t *t) {
   if (!t->armed)
     return false;
 
@@ -40,8 +40,8 @@ bool timer_elapsed(volatile timer_t *t) {
   return false;
 }
 
-bool timer_is_running(volatile timer_t *t, bool update) {
+bool tick_timer_is_running(volatile tick_timer_t *t, bool update) {
   if (update)
-    timer_elapsed(t);
+    tick_timer_elapsed(t);
   return t->armed;
 }

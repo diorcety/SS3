@@ -406,7 +406,7 @@ static TipType tip_type = TIP_TYPE_WMRT;
 static ReedState reed_state = REED_STATE_CLOSED;
 #endif
 
-static timer_t delay_timer;
+static tick_timer_t delay_timer;
 
 static bool st7789_force_redraw;
 static TipType previous_tip_type;
@@ -555,14 +555,14 @@ void st7789_coru(void *param) {
 
   DL_GPIO_setPins(Screen_PORT, Screen_Reset_PIN | Screen_BL_PIN);
 
-  timer_start(&delay_timer, 2, true); /* minimum 1 ms */
-  while (!timer_elapsed(&delay_timer)) {
+  tick_timer_start(&delay_timer, 2, true); /* minimum 1 ms */
+  while (!tick_timer_elapsed(&delay_timer)) {
     yield();
   }
   DL_GPIO_clearPins(Screen_PORT, Screen_Reset_PIN);
 
-  timer_start(&delay_timer, ST7789_RST_DELAY, true); /* ST7789_RST_DELAY ms */
-  while (!timer_elapsed(&delay_timer)) {
+  tick_timer_start(&delay_timer, ST7789_RST_DELAY, true); /* ST7789_RST_DELAY ms */
+  while (!tick_timer_elapsed(&delay_timer)) {
     yield();
   }
 
@@ -600,7 +600,7 @@ void st7789_init(void) {
 
   previous_display_state = display_state;
 
-  timer_init(&delay_timer);
+  tick_timer_init(&delay_timer);
 #ifndef TEST
   coru_create_inplace(&co, st7789_coru, NULL, co_stack, sizeof(co_stack));
 #else

@@ -21,7 +21,7 @@ static const int BUTTONS_ROTATION_EDGES_COUNT = 4;
 
 static volatile int rotation;
 
-static volatile timer_t press_timer;
+static volatile tick_timer_t press_timer;
 static volatile bool press_active;
 
 static Event event;
@@ -34,7 +34,7 @@ static uint32_t pins_previous_state;
  *********************************************************************************************************************/
 void button_init(void) {
   rotation = 0;
-  timer_init(&press_timer);
+  tick_timer_init(&press_timer);
   press_active = false;
   event = EVENT_NONE;
 
@@ -49,12 +49,12 @@ void button_loop(void) {
 
   NVIC_DisableIRQ(Buttons_INT_IRQN);
 
-  if (timer_is_running(&press_timer, false)) {
+  if (tick_timer_is_running(&press_timer, false)) {
     rotation = 0; // Cancel rotation if a press is in progress
-    if (timer_elapsed(&press_timer)) {
+    if (tick_timer_elapsed(&press_timer)) {
       event = EVENT_LONG_PRESS;
     } else if (!press_active) {
-      if (timer_stop(&press_timer) >= BUTTONS_DEBOUNCE_TIMEOUT) {
+      if (tick_timer_stop(&press_timer) >= BUTTONS_DEBOUNCE_TIMEOUT) {
         event = EVENT_PRESS;
       }
     }
@@ -99,7 +99,7 @@ void Buttons_INST_IRQHandler(void) {
   // --- Button P changed ---
   if (changed & Buttons_P_PIN) {
     if (pins_current_state & Buttons_P_PIN) {
-      timer_start(&press_timer, BUTTONS_LONG_PRESS_DURATION, false);
+      tick_timer_start(&press_timer, BUTTONS_LONG_PRESS_DURATION, false);
       press_active = true;
     } else {
       press_active = false;

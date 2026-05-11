@@ -47,7 +47,7 @@ int poor_mode;
 int max_duty;
 int idle_duty;
 
-static timer_t configuration_save_timer;
+static tick_timer_t configuration_save_timer;
 
 /*********************************************************************************************************************
  *                                                                                                                   *
@@ -69,7 +69,7 @@ static bool param_load_check(uint16_t variable_id, int *pvariable, int min_value
 
 void configuration_init(void) {
   eeprom_init();
-  timer_init(&configuration_save_timer);
+  tick_timer_init(&configuration_save_timer);
 }
 
 bool configuration_load(void) {
@@ -88,10 +88,10 @@ bool configuration_load(void) {
   return loaded;
 }
 
-void configuration_save(void) { timer_start(&configuration_save_timer, CONFIGURATION_SAVE_DELAY, true); }
+void configuration_save(void) { tick_timer_start(&configuration_save_timer, CONFIGURATION_SAVE_DELAY, true); }
 
 void configuration_loop(void) {
-  if (timer_elapsed(&configuration_save_timer)) {
+  if (tick_timer_elapsed(&configuration_save_timer)) {
     PARAM_SAVE(SETPOINT, setpoint);
     PARAM_SAVE(SETBACK, setback);
     PARAM_SAVE(SETBACK_DELAY, setback_delay);

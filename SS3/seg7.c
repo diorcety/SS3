@@ -179,8 +179,8 @@ static struct pt seg7_process_pt;
 
 static volatile bool trigger;
 
-static timer_t delay_timer;
-static timer_t current_setpoint_change_timer;
+static tick_timer_t delay_timer;
+static tick_timer_t current_setpoint_change_timer;
 static int previous_setpoint;
 
 static uint32_t number_last_update;
@@ -328,7 +328,7 @@ void update_display(void) {
       display_text(stby);
     } else if (heat_state == HEAT_STATE_ERROR) {
       display_text(err);
-    } else if (timer_is_running(&current_setpoint_change_timer, true)) {
+    } else if (tick_timer_is_running(&current_setpoint_change_timer, true)) {
       display_number(temp_unit(), heat_setpoint, number_force_update);
     } else if (tip_type == TIP_TYPE_NC) {
       display_text(nc);
@@ -487,8 +487,8 @@ void update_display(void) {
 
 void seg7_init(void) {
   pt_reset(&seg7_process_pt);
-  timer_init(&delay_timer);
-  timer_init(&current_setpoint_change_timer);
+  tick_timer_init(&delay_timer);
+  tick_timer_init(&current_setpoint_change_timer);
 
   trigger = false;
   previous_setpoint = heat_setpoint;
@@ -566,8 +566,8 @@ void seg7_loop(void) {
   pt_begin(&seg7_process_pt);
 
   DL_GPIO_setPins(Screen_PORT, Screen_Reset_PIN | Screen_BL_PIN);
-  timer_start(&delay_timer, 1, true); /* 1 ms */
-  pt_wait(&seg7_process_pt, timer_elapsed(&delay_timer));
+  tick_timer_start(&delay_timer, 1, true); /* 1 ms */
+  pt_wait(&seg7_process_pt, tick_timer_elapsed(&delay_timer));
   DL_GPIO_clearPins(Screen_PORT, Screen_Reset_PIN);
 
   for (;;) {
@@ -576,7 +576,7 @@ void seg7_loop(void) {
     // Detect setpoint changes
     if (heat_setpoint != previous_setpoint) {
       previous_setpoint = heat_setpoint;
-      timer_start(&current_setpoint_change_timer, SEG7_SETPOINT_DELAY, true);
+      tick_timer_start(&current_setpoint_change_timer, SEG7_SETPOINT_DELAY, true);
     }
 
     seg7_update();

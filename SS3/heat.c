@@ -26,7 +26,7 @@ static uint32_t idle_timestamp;
 static TipType previous_tip_type;
 static ReedState previous_reed_state;
 static HeatState previous_heat_state;
-static timer_t nc_timer;
+static tick_timer_t nc_timer;
 
 /*********************************************************************************************************************
  *                                                                                                                   *
@@ -38,7 +38,7 @@ void heat_init(void) {
   previous_tip_type = tip_type;
   previous_reed_state = reed_state;
 
-  timer_init(&nc_timer);
+  tick_timer_init(&nc_timer);
 
   // Start in normal heat state
   previous_heat_state = heat_state = HEAT_STATE_NORMAL;
@@ -51,7 +51,7 @@ void heat_loop(void) {
   }
 
   if (tip_type != TIP_TYPE_NC) {
-    timer_start(&nc_timer, HEAT_NC_ERROR_TIMEOUT, true);
+    tick_timer_start(&nc_timer, HEAT_NC_ERROR_TIMEOUT, true);
   }
 
   if (heat_state != HEAT_STATE_ERROR) {
@@ -75,7 +75,7 @@ void heat_loop(void) {
     }
   } else {
     // In case of error, ensure that the user completly unplug the tip before retrying anything
-    if (timer_elapsed(&nc_timer)) {
+    if (tick_timer_elapsed(&nc_timer)) {
       heat_state = HEAT_STATE_STANDBY;
     }
   }

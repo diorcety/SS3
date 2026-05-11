@@ -35,7 +35,7 @@ int left_duty;
 
 static int left_acc;
 static int right_acc;
-static timer_t tip_type_change_timer;
+static tick_timer_t tip_type_change_timer;
 static TipType previous_tip_type;
 static int heat_setpoint_counter;
 
@@ -63,7 +63,7 @@ static bool iron_can_heat(void) {
   }
 
   // Wait few time (and stabilisation) before heating
-  if (timer_is_running(&tip_type_change_timer, true)) {
+  if (tick_timer_is_running(&tip_type_change_timer, true)) {
     return false;
   }
 
@@ -92,7 +92,7 @@ void iron_init(void) {
   next_sw_state = current_sw_state = 0;
   next_set = false;
 
-  timer_init(&tip_type_change_timer);
+  tick_timer_init(&tip_type_change_timer);
 }
 
 bool iron_is_standby(void) { return current_sw_state == 0 && next_set && next_sw_state == 0; }
@@ -128,7 +128,7 @@ void iron_loop(void) {
   // Detect tip_type changes
   if (previous_tip_type != tip_type) {
     previous_tip_type = tip_type;
-    timer_start(&tip_type_change_timer, TIP_CHANGE_WAIT_DELAY, true);
+    tick_timer_start(&tip_type_change_timer, TIP_CHANGE_WAIT_DELAY, true);
   }
 
   // Check if we can heat
