@@ -398,7 +398,7 @@ static uint32_t previous_temperature_update;
  *********************************************************************************************************************/
 #ifndef TEST
 static coru_t co;
-static uint8_t co_stack[256];
+static _Alignas(32) uint8_t co_stack[4096];
 #else
 #define reed_state reed_state_test
 #define tip_type tip_type_test
