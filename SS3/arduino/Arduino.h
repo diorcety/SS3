@@ -8,8 +8,19 @@
 
 // Implementations
 #ifndef ERROR_HANDLER
+#if !defined(SIMULATION)
 extern "C" void error_handler(void);
 #define ERROR_HANDLER() error_handler()
+#else
+#ifdef __cplusplus
+extern "C" {
+#endif
+#include <stdlib.h>
+#define ERROR_HANDLER() abort()
+#ifdef __cplusplus
+}
+#endif
+#endif
 #endif
 
 #ifndef CORU_DISABLED

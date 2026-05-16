@@ -7,7 +7,18 @@
  *                                                                                                                   *
  *********************************************************************************************************************/
 
+#if !defined(SIMULATION)
 #define ERROR_HANDLER() error_handler()
+#else
+#ifdef __cplusplus
+extern "C" {
+#endif
+#include <stdlib.h>
+#define ERROR_HANDLER() abort()
+#ifdef __cplusplus
+}
+#endif
+#endif
 
 /*********************************************************************************************************************
  *                                                                                                                   *
