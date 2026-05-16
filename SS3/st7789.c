@@ -17,6 +17,7 @@
 
 #include <coru.h>
 #include <stdio.h>
+#include <string.h>
 
 #define U8G2_FONT_SECTION(name)
 #include <inconsolata24.h>
@@ -200,7 +201,12 @@
 #define CHAR_TARGET "\x8F"
 #define CHAR_LIGTHING "\x90"
 #define CHAR_HEAT "\x91"
-#define CHAR_SPACE " "
+#define CHAR_SPACE "\x20"
+
+#define CHAR_UP "\x9c"
+#define CHAR_DOWN "\x9d"
+#define CHAR_LEFT "\x9e"
+#define CHAR_RIGHT "\x9f"
 
 #define CHAR_SIGNAL1 "\x96"
 #define CHAR_SIGNAL2 "\x97"
@@ -208,11 +214,15 @@
 #define CHAR_SIGNAL4 "\x99"
 #define CHAR_SIGNAL5 "\x9A"
 
-#define RGB565_SIGNAL1 RGB565(0, 255, 0)
-#define RGB565_SIGNAL2 RGB565(128, 255, 0)
-#define RGB565_SIGNAL3 RGB565(255, 255, 0)
-#define RGB565_SIGNAL4 RGB565(255, 165, 0)
-#define RGB565_SIGNAL5 RGB565(255, 0, 0)
+#define SIGNAL1_COLOR RGB565(0, 255, 0)
+#define SIGNAL2_COLOR RGB565(128, 255, 0)
+#define SIGNAL3_COLOR RGB565(255, 255, 0)
+#define SIGNAL4_COLOR RGB565(255, 165, 0)
+#define SIGNAL5_COLOR RGB565(255, 0, 0)
+
+static char const *const SIGNAL_CHARACTERS[5] = {CHAR_SIGNAL1, CHAR_SIGNAL2, CHAR_SIGNAL3, CHAR_SIGNAL4, CHAR_SIGNAL5};
+
+static const uint16_t SIGNAL_COLORS[5] = {SIGNAL1_COLOR, SIGNAL2_COLOR, SIGNAL3_COLOR, SIGNAL4_COLOR, SIGNAL5_COLOR};
 
 static const uint16_t TEMPEATURE_COLOR_LUT[] = {
     // 0-189 : Blue -> Cyan
@@ -345,26 +355,101 @@ static const uint16_t TEMPEATURE_COLOR_LUT[] = {
 };
 static const uint16_t TEMPERATURE_COLOR_MAX = 500;
 
-static const char *TIP_ICONS[] = {
+static char const *const ON_TXT = "On";
+static char const *const OFF_TXT = "Off";
+
+static char const *const NUMBER_FORMAT = "%d";
+static char const *const TEMPERATURE_CELCIUS_FORMAT = "%03d°C";
+static char const *const TEMPERATURE_FAHRENHEIT_FORMAT = "%03d°F";
+static char const *const FREQUENCY_FORMAT = "%d Hz";
+
+static char const *const main_menu_txt[] = {
+    [MAIN_MENU_BACK] = "Back",
+    [MAIN_MENU_SETBACK] = "Setback",
+    [MAIN_MENU_SETBACK_DELAY] = "Setback delay",
+    [MAIN_MENU_STANDBY_DELAY] = "Standby delay",
+    [MAIN_MENU_OFFSET] = "Temperature offset",
+    [MAIN_MENU_UNIT] = "Unit",
+    [MAIN_MENU_STEP_SIZE] = "Step size",
+    [MAIN_MENU_DIAG] = "Diagnostic",
+};
+
+static char const *const diag_menu_txt[] = {
+    [DIAG_MENU_BACK] = "Back",
+    [DIAG_MENU_COLD_COMPENSATION] = "Cold compensation",
+    [DIAG_MENU_REFERENCE] = "Reference voltage",
+    [DIAG_MENU_TIP_TYPE] = "Tip type",
+    [DIAG_MENU_REED_STATE] = "Reed state",
+    [DIAG_MENU_SHOW_FREQUENCY] = "Frequency",
+    [DIAG_MENU_TC_1_READING] = "Thermocouple 1",
+    [DIAG_MENU_TC_2_READING] = "Thermocouple 2",
+    [DIAG_MENU_PWM_1_READING] = "PWM 1",
+    [DIAG_MENU_PWM_2_READING] = "PWM 2",
+    [DIAG_MENU_IDLE_DUTY] = "Idle duty",
+    [DIAG_MENU_MAX_DUTY] = "Max duty",
+    [DIAG_MENU_POOR] = "Poor mode",
+    [DIAG_MENU_FW_VERSION] = "Version",
+};
+
+static char const *const header_txt[] = {
+    [DISPLAY_STATE_MAIN] = "",
+
+    [DISPLAY_STATE_MAIN_MENU] = "Main",
+    [DISPLAY_STATE_ADJ_SETBACK] = "Setback",
+    [DISPLAY_STATE_ADJ_SETBACK_DELAY] = "Setback delay",
+    [DISPLAY_STATE_ADJ_STANDBY_DELAY] = "Standby delay",
+    [DISPLAY_STATE_ADJ_OFFSET] = "Temperature offset",
+    [DISPLAY_STATE_ADJ_UNIT] = "Unit",
+    [DISPLAY_STATE_ADJ_STEP_SIZE] = "Step size",
+
+    [DISPLAY_STATE_DIAG_MENU] = "Diagnostic",
+    [DISPLAY_STATE_SHOW_COLD_COMPENSATION] = "Cold compensation",
+    [DISPLAY_STATE_ADJ_REFERENCE] = "Reference voltage",
+    [DISPLAY_STATE_SHOW_TIP_TYPE] = "Tip type",
+    [DISPLAY_STATE_SHOW_REED_STATE] = "Reed state",
+    [DISPLAY_STATE_SHOW_FREQUENCY] = "Frequency",
+    [DISPLAY_STATE_SHOW_TC_1_READING] = "Thermocouple 1",
+    [DISPLAY_STATE_SHOW_TC_2_READING] = "Thermocouple 2",
+    [DISPLAY_STATE_SHOW_PWM_1_READING] = "PWM 1",
+    [DISPLAY_STATE_SHOW_PWM_2_READING] = "PWM 2",
+    [DISPLAY_STATE_ADJ_IDLE_DUTY] = "Idle duty",
+    [DISPLAY_STATE_ADJ_MAX_DUTY] = "Max duty",
+    [DISPLAY_STATE_ADJ_POOR] = "Poor mode",
+    [DISPLAY_STATE_SHOW_FW_VERSION] = "Version",
+};
+
+static char const *const tip_txt[] = {
+    [TIP_TYPE_NC] = "N.C",
+    [TIP_TYPE_WXUP] = "WXRP",
+    [TIP_TYPE_WMRP] = "WMRP",
+    [TIP_TYPE_WMRT] = "WMRT",
+};
+
+static char const *const reed_txt[] = {
+    [REED_STATE_CLOSED] = "Closed",
+    [REED_STATE_OPENED] = "Opened",
+};
+
+static char const *const TIP_ICONS[] = {
     [TIP_TYPE_NC] = CHAR_NC,
     [TIP_TYPE_WXUP] = CHAR_WXUP,
     [TIP_TYPE_WMRP] = CHAR_WMRP,
     [TIP_TYPE_WMRT] = CHAR_WMRT,
 };
 
-static const char *TIP_VOLTAGES[] = {
-    [TIP_TYPE_NC] = CHAR_SPACE "   ",
+static char const *const TIP_VOLTAGES[] = {
+    [TIP_TYPE_NC] = CHAR_SPACE CHAR_SPACE CHAR_SPACE CHAR_SPACE,
     [TIP_TYPE_WXUP] = CHAR_LIGTHING "24V",
     [TIP_TYPE_WMRP] = CHAR_LIGTHING "12V",
     [TIP_TYPE_WMRT] = CHAR_LIGTHING "12V",
 };
 
-static const char *REED_ICONS[] = {
+static char const *const REED_ICONS[] = {
     [REED_STATE_CLOSED] = CHAR_REED,
     [REED_STATE_OPENED] = CHAR_SPACE,
 };
 
-static const char *SETBACK_ICONS[] = {
+static char const *const SETBACK_ICONS[] = {
     [HEAT_STATE_NORMAL] = CHAR_SPACE,
     [HEAT_STATE_SETBACK] = CHAR_SETBACK,
     [HEAT_STATE_STANDBY] = CHAR_SETBACK,
@@ -372,6 +457,8 @@ static const char *SETBACK_ICONS[] = {
 };
 
 static const uint16_t ST7789_BG_COLOR = RGB565_BLACK;
+static const uint16_t ST7789_HEADER_COLOR = RGB565_DARKBLUE;
+static const uint16_t ST7789_SELECTED_COLOR = RGB565_LIGHTYELLOW;
 static const uint16_t ST7789_VOLTAGE_COLOR = RGB565_CYAN;
 
 static const unsigned int ST7789_SCREEN_HEIGHT = 170;
@@ -399,6 +486,15 @@ static const int ST7789_RIGHT_TEMPERATURE_IIR_WINDOW = 32;
 
 static const int ST7789_TEMPERATURE_SLOW_UPDATE_MS = 1000;
 static const int ST7789_TEMPERATURE_SLOW_THRESHOLD_DEG = 2;
+
+static const int ST7789_HEADER_CHARACTER_WIDTH = 14;
+static const unsigned int ST7789_HEADER_BASELINE = 30;
+static const unsigned int ST7789_HEADER_HEIGHT = 40;
+
+static const unsigned int ST7789_MENU_TOP = ST7789_HEADER_HEIGHT + 8;
+static const unsigned int ST7789_MENU_ROW_HEIGHT = 25;
+static const unsigned int ST7789_MENU_ROW_OFFSET = 12;
+static const unsigned int ST7789_MENU_VISIBLE = 5;
 
 static const int ST7789_BLINK_DELAY = 1028;
 
@@ -436,7 +532,7 @@ static inline void yield(void) {}
 
 static TipType tip_type = TIP_TYPE_WMRT;
 static ReedState reed_state = REED_STATE_CLOSED;
-static HeatState heat_state = HEAT_STATE_ERROR;
+static HeatState heat_state = HEAT_STATE_NORMAL;
 static int right_duty = MAX_DUTY_MAX / 2;
 static int left_duty = MAX_DUTY_MAX / 2;
 static int heat_setpoint = 240;
@@ -448,16 +544,37 @@ static tick_timer_t delay_timer;
 
 static bool st7789_force_redraw;
 
+// Direct update: no debounce
 static CACHED_VALUE_DECL(DisplayState, display_state, 0);
 static CACHED_VALUE_DECL(int, blink, 0);
 static CACHED_VALUE_DECL(TipType, tip_type, 0);
 static CACHED_VALUE_DECL(ReedState, reed_state, 0);
 static CACHED_VALUE_DECL(HeatState, heat_state, 0);
+static CACHED_VALUE_DECL(int, heat_setpoint, 0);
+static CACHED_VALUE_DECL(int, setback, 0);
+static CACHED_VALUE_DECL(int, setback_delay, 0);
+static CACHED_VALUE_DECL(int, standby_delay, 0);
+static CACHED_VALUE_DECL(int, temperature_offset, 0);
+static CACHED_VALUE_DECL(int, temperature_unit, 0);
+static CACHED_VALUE_DECL(int, step_size, 0);
+static CACHED_VALUE_DECL(int, kty_value, 0);
+static CACHED_VALUE_DECL(int, reference, 0);
+static CACHED_VALUE_DECL(int, idle_duty, 0);
+static CACHED_VALUE_DECL(int, max_duty, 0);
+static CACHED_VALUE_DECL(int, poor_mode, 0);
+
+// Frequent updates: debounce the input
 static CACHED_VALUE_DECL(int, right_duty, 200);
 static CACHED_VALUE_DECL(int, left_duty, 200);
 static CACHED_VALUE_DECL(int, right_temperature, 200);
 static CACHED_VALUE_DECL(int, left_temperature, 200);
-static CACHED_VALUE_DECL(int, heat_setpoint, 0);
+static CACHED_VALUE_DECL(int, tc_right_temperature, 200);
+static CACHED_VALUE_DECL(int, tc_left_temperature, 200);
+static CACHED_VALUE_DECL(int, main_period, 200);
+
+// Menu cache
+static CACHED_VALUE_DECL(MainMenu, main_menu, 0);
+static CACHED_VALUE_DECL(DiagMenu, diag_menu, 0);
 
 /*********************************************************************************************************************
  *                                                                                                                   *
@@ -473,11 +590,19 @@ static uint16_t st7789_temperature_color(int temperature) {
   return TEMPEATURE_COLOR_LUT[index];
 }
 
+static int print_temperature(char *s, size_t n, int temperature, bool absolute) {
+  if ((TemperatureUnit)temperature_unit == TEMPERATURE_UNIT_C) {
+    return snprintf(s, n, TEMPERATURE_CELCIUS_FORMAT, temperature);
+  } else {
+    temperature = temperature * 9 / 5;
+    if (absolute) {
+      temperature += 32;
+    }
+    return snprintf(s, n, TEMPERATURE_FAHRENHEIT_FORMAT, temperature);
+  }
+}
+
 static void st7789_duty_signal(uint16_t x, uint16_t y, int duty) {
-  static const char *bars[5] = {CHAR_SIGNAL1, CHAR_SIGNAL2, CHAR_SIGNAL3, CHAR_SIGNAL4, CHAR_SIGNAL5};
-
-  static const uint16_t colors[5] = {RGB565_SIGNAL1, RGB565_SIGNAL2, RGB565_SIGNAL3, RGB565_SIGNAL4, RGB565_SIGNAL5};
-
   uint8_t level;
 
   if (duty >= 80)
@@ -500,15 +625,15 @@ static void st7789_duty_signal(uint16_t x, uint16_t y, int duty) {
 
   for (uint8_t i = 0; i < 5; i++) {
     if (i < level) {
-      st7889_set_text_color(colors[i], ST7789_BG_COLOR);
-      st7889_print(bars[i]);
+      st7889_set_text_color(SIGNAL_COLORS[i], ST7789_BG_COLOR);
+      st7889_print(SIGNAL_CHARACTERS[i]);
     } else {
       st7889_print(CHAR_SPACE);
     }
   }
 }
 
-void st7789_screen_main(void) {
+static void update_main(void) {
   bool ack_heat_state = false;
   bool ack_tip_type = false;
   bool ack_blink = false;
@@ -611,7 +736,8 @@ void st7789_screen_main(void) {
     st7889_set_cursor(ST7789_SETPOINT_LEFT, ST7789_SETPOINT_BOTTOM);
     st7889_set_text_color(RGB565_WHITE, ST7789_BG_COLOR);
     char sp_buf[8];
-    snprintf(sp_buf, sizeof(sp_buf), CHAR_TARGET "%03d°C", CACHED_VALUE_GET(heat_setpoint));
+    sp_buf[0] = CHAR_TARGET[0];
+    print_temperature(&sp_buf[1], sizeof(sp_buf) - 1, CACHED_VALUE_GET(heat_setpoint), true);
     st7889_print(sp_buf);
 
     CACHED_VALUE_ACK(heat_setpoint);
@@ -673,8 +799,133 @@ void st7789_screen_main(void) {
   }
 }
 
-void st7789_screen_redraw(void) {
+static void update_header(void) {
+  /* --- header ----------------------------- */
+  if (st7789_force_redraw) {
+    const char *header = header_txt[display_state];
+    st7889_fill_rect(0, 0, ST7789_SCREEN_WIDTH, ST7789_HEADER_HEIGHT, ST7789_HEADER_COLOR);
+    st7889_draw_line(0, ST7789_HEADER_HEIGHT, ST7789_SCREEN_WIDTH, ST7789_HEADER_HEIGHT, RGB565_WHITE);
+
+    int x = (ST7789_SCREEN_WIDTH - strlen(header) * ST7789_HEADER_CHARACTER_WIDTH) / 2;
+
+    st7889_set_font(inconsolata24);
+    st7889_set_cursor(x, ST7789_HEADER_BASELINE);
+    st7889_set_text_color(RGB565_WHITE, RGB565_WHITE);
+    st7889_print(header);
+  }
+}
+
+static void update_view(const char *txt) {
+  /* --- header ----------------------------- */
+  update_header();
+
+  char line[32];
+  int x = MAX(0, (11 - strlen(txt)) / 2);
+  memset(line, CHAR_SPACE[0], x);
+  snprintf(&line[x], sizeof(line) - x, "%-11s", txt);
+
+  st7889_set_font(inconsolata24);
+  st7889_set_cursor(0, ST7789_HEADER_BASELINE);
+  st7889_set_text_color(RGB565_WHITE, RGB565_WHITE);
+  st7889_print(txt);
+}
+
+static void update_menu(const char *const items[], unsigned int item_count, unsigned int selected_index) {
+  /* --- header ----------------------------- */
+  update_header();
+
+  /* ---------------------------------------------------------- */
+  /* Compute visible window                                     */
+  /* ---------------------------------------------------------- */
+
+  int scroll_offset = 0;
+
+  if (item_count > ST7789_MENU_VISIBLE) {
+    scroll_offset = selected_index - (ST7789_MENU_VISIBLE / 2);
+
+    if (scroll_offset < 0)
+      scroll_offset = 0;
+
+    int max_offset = item_count - ST7789_MENU_VISIBLE;
+
+    if (scroll_offset > max_offset)
+      scroll_offset = max_offset;
+  }
+
+  /* ---------------------------------------------------------- */
+  /* Draw rows                                                  */
+  /* ---------------------------------------------------------- */
+
+  st7889_set_font(inconsolata24);
+
+  char line[32];
+
+  for (unsigned int row = 0; row < ST7789_MENU_VISIBLE; row++) {
+
+    unsigned int item_index = scroll_offset + row;
+
+    int y = ST7789_MENU_TOP + row * ST7789_MENU_ROW_HEIGHT + ST7789_MENU_ROW_OFFSET;
+
+    bool selected = (item_index == selected_index);
+
+    uint16_t bg = selected ? ST7789_SELECTED_COLOR : RGB565_BLACK;
+
+    uint16_t fg = selected ? RGB565_BLACK : RGB565_WHITE;
+
+    st7889_set_cursor(0, y);
+
+    st7889_set_text_color(fg, bg);
+
+    if (item_index < item_count) {
+      snprintf(line, sizeof(line), "%s %-20s", selected ? CHAR_RIGHT : CHAR_SPACE, items[item_index]);
+    } else {
+      snprintf(line, sizeof(line), CHAR_SPACE);
+    }
+
+    st7889_print(line);
+  }
+
+  /* ---------------------------------------------------------- */
+  /* Scroll indicators                                          */
+  /* ---------------------------------------------------------- */
+
+  st7889_set_text_color(RGB565_WHITE, RGB565_BLACK);
+
+  /* up */
+  st7889_set_cursor(ST7789_SCREEN_WIDTH - ST7789_HEADER_CHARACTER_WIDTH, ST7789_MENU_TOP + ST7789_MENU_ROW_OFFSET);
+
+  st7889_print((scroll_offset > 0) ? CHAR_UP : CHAR_SPACE);
+
+  /* down */
+  st7889_set_cursor(ST7789_SCREEN_WIDTH - ST7789_HEADER_CHARACTER_WIDTH,
+                    ST7789_MENU_TOP + (ST7789_MENU_VISIBLE - 1) * ST7789_MENU_ROW_HEIGHT + ST7789_MENU_ROW_OFFSET);
+
+  st7889_print((scroll_offset + ST7789_MENU_VISIBLE < item_count) ? CHAR_DOWN : CHAR_SPACE);
+}
+
+static void update_main_menu(void) {
+  if (!CACHED_VALUE_NEEDS_REDRAW(main_menu, st7789_force_redraw))
+    return;
+
+  update_menu(main_menu_txt, ARRAY_SIZE(main_menu_txt), CACHED_VALUE_GET(main_menu));
+
+  CACHED_VALUE_ACK(main_menu);
+}
+
+static void update_diag_menu(void) {
+  if (!CACHED_VALUE_NEEDS_REDRAW(diag_menu, st7789_force_redraw))
+    return;
+
+  update_menu(diag_menu_txt, ARRAY_SIZE(diag_menu_txt), CACHED_VALUE_GET(diag_menu));
+
+  CACHED_VALUE_ACK(diag_menu);
+}
+
+static void screen_redraw(void) {
+  char buf[32];
   CACHED_VALUE_SET(display_state, display_state);
+  CACHED_VALUE_SET(main_menu, main_menu);
+  CACHED_VALUE_SET(diag_menu, diag_menu);
 
   st7789_force_redraw = false;
   if (CACHED_VALUE_NEEDS_REDRAW(display_state, false)) {
@@ -695,13 +946,178 @@ void st7789_screen_redraw(void) {
     CACHED_VALUE_FORCE_DIRTY(right_temperature);
     CACHED_VALUE_FORCE_DIRTY(left_temperature);
     CACHED_VALUE_FORCE_DIRTY(heat_setpoint);
+
+    CACHED_VALUE_FORCE_DIRTY(main_menu);
+    CACHED_VALUE_FORCE_DIRTY(diag_menu);
   }
 
   switch (display_state) {
   case DISPLAY_STATE_MAIN:
-    st7789_screen_main();
+    update_main();
     break;
-  default:
+  case DISPLAY_STATE_MAIN_MENU:
+    update_main_menu();
+    break;
+  case DISPLAY_STATE_DIAG_MENU:
+    update_diag_menu();
+    break;
+  case DISPLAY_STATE_ADJ_SETBACK:
+    if (CACHED_VALUE_NEEDS_REDRAW(setback, st7789_force_redraw)) {
+      snprintf(buf, sizeof(buf), NUMBER_FORMAT, CACHED_VALUE_GET(setback));
+      update_view(buf);
+
+      CACHED_VALUE_ACK(setback);
+    }
+    break;
+  case DISPLAY_STATE_ADJ_SETBACK_DELAY:
+    if (CACHED_VALUE_NEEDS_REDRAW(setback_delay, st7789_force_redraw)) {
+      if (CACHED_VALUE_GET(setback_delay) == SETBACK_DELAY_MIN)
+        update_view(OFF_TXT);
+      else {
+        snprintf(buf, sizeof(buf), NUMBER_FORMAT, CACHED_VALUE_GET(setback_delay));
+        update_view(buf);
+      }
+
+      CACHED_VALUE_ACK(setback_delay);
+    }
+    break;
+  case DISPLAY_STATE_ADJ_STANDBY_DELAY:
+    if (CACHED_VALUE_NEEDS_REDRAW(standby_delay, st7789_force_redraw)) {
+      if (CACHED_VALUE_GET(standby_delay) == STANDBY_DELAY_MIN)
+        update_view(OFF_TXT);
+      else {
+        snprintf(buf, sizeof(buf), NUMBER_FORMAT, CACHED_VALUE_GET(standby_delay));
+        update_view(buf);
+      }
+
+      CACHED_VALUE_ACK(standby_delay);
+    }
+    break;
+  case DISPLAY_STATE_ADJ_OFFSET:
+    if (CACHED_VALUE_NEEDS_REDRAW(temperature_offset, st7789_force_redraw)) {
+      print_temperature(buf, sizeof(buf), CACHED_VALUE_GET(temperature_offset), false);
+      update_view(buf);
+
+      CACHED_VALUE_ACK(temperature_offset);
+    }
+    break;
+  case DISPLAY_STATE_ADJ_UNIT:
+    if (CACHED_VALUE_NEEDS_REDRAW(temperature_unit, st7789_force_redraw)) {
+      update_view((CACHED_VALUE_GET(temperature_unit) == TEMPERATURE_UNIT_C) ? "C" : "F");
+
+      CACHED_VALUE_ACK(temperature_unit);
+    }
+    break;
+  case DISPLAY_STATE_ADJ_STEP_SIZE:
+    if (CACHED_VALUE_NEEDS_REDRAW(step_size, st7789_force_redraw)) {
+      print_temperature(buf, sizeof(buf), CACHED_VALUE_GET(step_size), false);
+      update_view(buf);
+
+      CACHED_VALUE_ACK(step_size);
+    }
+    break;
+  case DISPLAY_STATE_SHOW_COLD_COMPENSATION:
+    if (CACHED_VALUE_NEEDS_REDRAW(kty_value, st7789_force_redraw)) {
+      snprintf(buf, sizeof(buf), NUMBER_FORMAT, CACHED_VALUE_GET(kty_value));
+      update_view(buf);
+
+      CACHED_VALUE_ACK(kty_value);
+    }
+    break;
+  case DISPLAY_STATE_ADJ_REFERENCE:
+    if (CACHED_VALUE_NEEDS_REDRAW(reference, st7789_force_redraw)) {
+      snprintf(buf, sizeof(buf), NUMBER_FORMAT, CACHED_VALUE_GET(reference));
+      update_view(buf);
+
+      CACHED_VALUE_ACK(reference);
+    }
+    break;
+  case DISPLAY_STATE_SHOW_TIP_TYPE:
+    if (CACHED_VALUE_NEEDS_REDRAW(tip_type, st7789_force_redraw)) {
+      update_view(tip_txt[CACHED_VALUE_GET(tip_type)]);
+
+      CACHED_VALUE_ACK(tip_type);
+    }
+    break;
+  case DISPLAY_STATE_SHOW_REED_STATE:
+    if (CACHED_VALUE_NEEDS_REDRAW(reed_state, st7789_force_redraw)) {
+      update_view(reed_txt[CACHED_VALUE_GET(reed_state)]);
+      CACHED_VALUE_ACK(reed_state);
+    }
+    break;
+  case DISPLAY_STATE_SHOW_FREQUENCY:
+    if (CACHED_VALUE_NEEDS_REDRAW(main_period, st7789_force_redraw)) {
+      int freq = (int)((1000.0f / 2.0f) / (float)CACHED_VALUE_GET(main_period));
+      snprintf(buf, sizeof(buf), FREQUENCY_FORMAT, freq);
+      update_view(buf);
+
+      CACHED_VALUE_ACK(main_period);
+    }
+    break;
+  case DISPLAY_STATE_SHOW_TC_1_READING:
+    if (CACHED_VALUE_NEEDS_REDRAW(tc_right_temperature, st7789_force_redraw)) {
+      print_temperature(buf, sizeof(buf), CACHED_VALUE_GET(tc_right_temperature), true);
+      update_view(buf);
+
+      CACHED_VALUE_ACK(tc_right_temperature);
+    }
+    break;
+  case DISPLAY_STATE_SHOW_TC_2_READING:
+    if (CACHED_VALUE_NEEDS_REDRAW(tc_left_temperature, st7789_force_redraw)) {
+      print_temperature(buf, sizeof(buf), CACHED_VALUE_GET(tc_left_temperature), true);
+      update_view(buf);
+
+      CACHED_VALUE_ACK(tc_left_temperature);
+    }
+    break;
+  case DISPLAY_STATE_SHOW_PWM_1_READING:
+    if (CACHED_VALUE_NEEDS_REDRAW(right_duty, st7789_force_redraw)) {
+      snprintf(buf, sizeof(buf), NUMBER_FORMAT, CACHED_VALUE_GET(right_duty));
+      update_view(buf);
+
+      CACHED_VALUE_ACK(right_duty);
+    }
+    break;
+  case DISPLAY_STATE_SHOW_PWM_2_READING:
+    if (CACHED_VALUE_NEEDS_REDRAW(left_duty, st7789_force_redraw)) {
+      snprintf(buf, sizeof(buf), NUMBER_FORMAT, CACHED_VALUE_GET(left_duty));
+      update_view(buf);
+
+      CACHED_VALUE_ACK(left_duty);
+    }
+    break;
+  case DISPLAY_STATE_ADJ_IDLE_DUTY:
+    if (CACHED_VALUE_NEEDS_REDRAW(idle_duty, st7789_force_redraw)) {
+      if (CACHED_VALUE_GET(idle_duty) == 0)
+        update_view(OFF_TXT);
+      else {
+        snprintf(buf, sizeof(buf), NUMBER_FORMAT, CACHED_VALUE_GET(idle_duty));
+        update_view(buf);
+      }
+
+      CACHED_VALUE_ACK(idle_duty);
+    }
+    break;
+  case DISPLAY_STATE_ADJ_MAX_DUTY:
+    if (CACHED_VALUE_NEEDS_REDRAW(max_duty, st7789_force_redraw)) {
+      snprintf(buf, sizeof(buf), NUMBER_FORMAT, CACHED_VALUE_GET(max_duty));
+      update_view(buf);
+
+      CACHED_VALUE_ACK(max_duty);
+    }
+    break;
+  case DISPLAY_STATE_ADJ_POOR:
+    if (CACHED_VALUE_NEEDS_REDRAW(poor_mode, st7789_force_redraw)) {
+      update_view(CACHED_VALUE_GET(poor_mode) ? ON_TXT : OFF_TXT);
+
+      CACHED_VALUE_ACK(poor_mode);
+    }
+    break;
+  case DISPLAY_STATE_SHOW_FW_VERSION:
+    if (st7789_force_redraw) {
+      snprintf(buf, sizeof(buf), "%02d.%02d", (FW_VERSION / 100) % 100, FW_VERSION % 100);
+      update_view("");
+    }
     break;
   }
 }
@@ -723,7 +1139,7 @@ void st7789_coru(void *param) {
   DL_GPIO_clearPins(Screen_PORT, Screen_BL_PIN);
 
   while (1) {
-    st7789_screen_redraw();
+    screen_redraw();
 
     yield();
   }
@@ -741,6 +1157,22 @@ static void st7789_init_cached_values(void) {
   CACHED_VALUE_SET(right_temperature, right_temperature);
   CACHED_VALUE_SET(left_temperature, left_temperature);
   CACHED_VALUE_SET(heat_setpoint, heat_setpoint);
+  CACHED_VALUE_SET(setback, setback);
+  CACHED_VALUE_SET(setback_delay, setback_delay);
+  CACHED_VALUE_SET(standby_delay, standby_delay);
+  CACHED_VALUE_SET(temperature_offset, temperature_offset);
+  CACHED_VALUE_SET(temperature_unit, temperature_unit);
+  CACHED_VALUE_SET(step_size, step_size);
+  CACHED_VALUE_SET(kty_value, kty_value);
+  CACHED_VALUE_SET(reference, reference);
+  CACHED_VALUE_SET(tc_right_temperature, tc_right_temperature);
+  CACHED_VALUE_SET(tc_left_temperature, tc_left_temperature);
+  CACHED_VALUE_SET(idle_duty, idle_duty);
+  CACHED_VALUE_SET(max_duty, max_duty);
+  CACHED_VALUE_SET(poor_mode, poor_mode);
+  CACHED_VALUE_SET(main_period, main_period);
+  CACHED_VALUE_SET(main_menu, main_menu);
+  CACHED_VALUE_SET(diag_menu, diag_menu);
 
   /* Force dirty so the very first paint always runs */
   CACHED_VALUE_FORCE_DIRTY(display_state);
@@ -753,6 +1185,22 @@ static void st7789_init_cached_values(void) {
   CACHED_VALUE_FORCE_DIRTY(right_temperature);
   CACHED_VALUE_FORCE_DIRTY(left_temperature);
   CACHED_VALUE_FORCE_DIRTY(heat_setpoint);
+  CACHED_VALUE_FORCE_DIRTY(setback);
+  CACHED_VALUE_FORCE_DIRTY(setback_delay);
+  CACHED_VALUE_FORCE_DIRTY(standby_delay);
+  CACHED_VALUE_FORCE_DIRTY(temperature_offset);
+  CACHED_VALUE_FORCE_DIRTY(temperature_unit);
+  CACHED_VALUE_FORCE_DIRTY(step_size);
+  CACHED_VALUE_FORCE_DIRTY(kty_value);
+  CACHED_VALUE_FORCE_DIRTY(reference);
+  CACHED_VALUE_FORCE_DIRTY(tc_right_temperature);
+  CACHED_VALUE_FORCE_DIRTY(tc_left_temperature);
+  CACHED_VALUE_FORCE_DIRTY(idle_duty);
+  CACHED_VALUE_FORCE_DIRTY(max_duty);
+  CACHED_VALUE_FORCE_DIRTY(poor_mode);
+  CACHED_VALUE_FORCE_DIRTY(main_period);
+  CACHED_VALUE_FORCE_DIRTY(main_menu);
+  CACHED_VALUE_FORCE_DIRTY(diag_menu);
 }
 
 void st7789_init(void) {
@@ -780,6 +1228,7 @@ void st7789_loop(void) {
 
   if (new_acquisition) {
     IIR_FILTER_ADD(ST7789_MAIN_PERIOD_IIR_WINDOW, main_period_acc, main_period);
+    int main_period_acc_filtred = IIR_FILTER_GET(ST7789_MAIN_PERIOD_IIR_WINDOW, main_period_acc);
 
     if (tip_has_right()) {
       IIR_FILTER_ADD(ST7789_RIGHT_TEMPERATURE_IIR_WINDOW, right_temperature_acc, right_temperature);
@@ -804,6 +1253,7 @@ void st7789_loop(void) {
       left_temperature_filtred = tmp_left_temperature_filtred;
       previous_temperature_update = systick_get();
     }
+
     CACHED_VALUE_SET(tip_type, tip_type);
     CACHED_VALUE_SET(reed_state, reed_state);
     CACHED_VALUE_SET(heat_state, heat_state);
@@ -812,6 +1262,20 @@ void st7789_loop(void) {
     CACHED_VALUE_SET(right_temperature, right_temperature_filtred);
     CACHED_VALUE_SET(left_temperature, left_temperature_filtred);
     CACHED_VALUE_SET(heat_setpoint, heat_setpoint);
+    CACHED_VALUE_SET(setback, setback);
+    CACHED_VALUE_SET(setback_delay, setback_delay);
+    CACHED_VALUE_SET(standby_delay, standby_delay);
+    CACHED_VALUE_SET(temperature_offset, temperature_offset);
+    CACHED_VALUE_SET(temperature_unit, temperature_unit);
+    CACHED_VALUE_SET(step_size, step_size);
+    CACHED_VALUE_SET(kty_value, (int)kty_value);
+    CACHED_VALUE_SET(reference, reference);
+    CACHED_VALUE_SET(tc_right_temperature, (int)tc_right_temperature);
+    CACHED_VALUE_SET(tc_left_temperature, (int)tc_left_temperature);
+    CACHED_VALUE_SET(idle_duty, idle_duty);
+    CACHED_VALUE_SET(max_duty, max_duty);
+    CACHED_VALUE_SET(poor_mode, poor_mode);
+    CACHED_VALUE_SET(main_period, main_period_acc_filtred);
   }
 
 #ifndef CORU_DISABLED

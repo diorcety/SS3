@@ -141,7 +141,7 @@ static uint8_t const vers[] = {_V, _E, _R, _S, _SPACE};         //  vErS
 
 static uint8_t const hex_table[] = {_0, _1, _2, _3, _4, _5, _6, _7, _8, _9, _A, _B, _C, _D, _E, _F};
 
-static uint8_t const *main_menu_txt[] = {
+static uint8_t const *const main_menu_txt[] = {
     [MAIN_MENU_BACK] = bacc,
     [MAIN_MENU_SETBACK] = setb,
     [MAIN_MENU_SETBACK_DELAY] = dly1,
@@ -152,7 +152,7 @@ static uint8_t const *main_menu_txt[] = {
     [MAIN_MENU_DIAG] = diag,
 };
 
-static uint8_t const *diag_menu_txt[] = {
+static uint8_t const *const diag_menu_txt[] = {
     [DIAG_MENU_BACK] = bacc,
     [DIAG_MENU_COLD_COMPENSATION] = cold,
     [DIAG_MENU_REFERENCE] = ref,
@@ -167,6 +167,18 @@ static uint8_t const *diag_menu_txt[] = {
     [DIAG_MENU_MAX_DUTY] = max,
     [DIAG_MENU_POOR] = poor,
     [DIAG_MENU_FW_VERSION] = vers,
+};
+
+static uint8_t const *const tip_txt[] = {
+    [TIP_TYPE_NC] = nc,
+    [TIP_TYPE_WXUP] = wxup,
+    [TIP_TYPE_WMRP] = wmrp,
+    [TIP_TYPE_WMRT] = wmrt,
+};
+
+static uint8_t const *const reed_txt[] = {
+    [REED_STATE_CLOSED] = clos,
+    [REED_STATE_OPENED] = open,
 };
 
 /*********************************************************************************************************************
@@ -238,7 +250,7 @@ static inline DisplayMode temp_unit(void) {
   return ((TemperatureUnit)temperature_unit == TEMPERATURE_UNIT_C) ? DISPLAY_MODE_C : DISPLAY_MODE_F;
 }
 
-void display_number(DisplayMode display_mode, int num, bool force) {
+static void display_number(DisplayMode display_mode, int num, bool force) {
   if (!force && !systick_elapsed(number_last_update, SEG7_NUMBER_UPDATE_DELAY)) {
     return;
   }
@@ -304,19 +316,19 @@ void display_number(DisplayMode display_mode, int num, bool force) {
   }
 }
 
-void update_main_menu_display(void) {
+static void update_main_menu_display(void) {
   if (main_menu < ARRAY_SIZE(main_menu_txt)) {
     display_text(main_menu_txt[main_menu]);
   }
 }
 
-void update_menu_diag_display(void) {
+static void update_menu_diag_display(void) {
   if (diag_menu < ARRAY_SIZE(diag_menu_txt)) {
     display_text(diag_menu_txt[diag_menu]);
   }
 }
 
-void update_display(void) {
+static void update_display(void) {
   if (previous_display_state != display_state) {
     number_force_update = true;
     previous_display_state = display_state;
@@ -411,31 +423,11 @@ void update_display(void) {
     break;
 
   case DISPLAY_STATE_SHOW_TIP_TYPE:
-    switch (tip_type) {
-    case TIP_TYPE_WXUP:
-      display_text(wxup);
-      break;
-    case TIP_TYPE_WMRP:
-      display_text(wmrp);
-      break;
-    case TIP_TYPE_WMRT:
-      display_text(wmrt);
-      break;
-    case TIP_TYPE_NC:
-      display_text(nc);
-      break;
-    }
+    display_text(tip_txt[tip_type]);
     break;
 
   case DISPLAY_STATE_SHOW_REED_STATE:
-    switch (reed_state) {
-    case REED_STATE_OPENED:
-      display_text(open);
-      break;
-    case REED_STATE_CLOSED:
-      display_text(clos);
-      break;
-    }
+    display_text(reed_txt[reed_state]);
     break;
 
   case DISPLAY_STATE_SHOW_FREQUENCY: {

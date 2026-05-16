@@ -142,10 +142,22 @@ set(TI_STARTUP_FILE ${SDK_ROOT}/source/ti/devices/msp/m0p/startup_system_files/t
 add_executable(SS3
     ${PROJECT_C_SOURCES}
 )
+
 # Ensure SysConfig runs first
 if(NOT SIMULATION)
     target_sources(SS3 PRIVATE $<TARGET_PROPERTY:${SYSCONFIG_TARGET},SYSCONFIG_GEN_CFILES> ${TI_STARTUP_FILE})
     add_dependencies(SS3 ${SYSCONFIG_TARGET})
+
+    get_target_property(SYSCONFIG_FILES
+        ${SYSCONFIG_TARGET}
+        SYSCONFIG_GEN_CFILES
+    )
+
+    set_source_files_properties(
+        ${SYSCONFIG_FILES}
+        PROPERTIES
+        COMPILE_OPTIONS "-Wno-cast-qual"
+    )
 endif()
 
 # ----------------------------------------------------------------------------------------------------------------------
@@ -176,6 +188,9 @@ target_compile_options(SS3 PRIVATE
     -Wextra
     -Werror
     -Wenum-conversion
+    -Wassign-enum
+    -Wcast-qual
+    -Wwrite-strings
 
     -Wno-gnu-label-as-value
     -Wno-gnu-folding-constant
@@ -298,7 +313,7 @@ if(SCREEN STREQUAL "ST7789")
         ${CMAKE_SOURCE_DIR}/resources/InconsolataLGC-Bold-24.bdf
 
         GLYPHS
-        32,48-57,64-90,97-122,143-145,150-154,176
+        32-126,133-138,143-145,150-154,156-159,176
 
         EXTRA_ARGS
         -f 1

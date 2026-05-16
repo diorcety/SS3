@@ -70,6 +70,9 @@ void st7889_fill_screen(uint16_t color) { st7889->fillScreen(color); }
 void st7889_draw_line(int16_t x0, int16_t y0, int16_t x1, int16_t y1, uint16_t color) {
   st7889->drawLine(x0, y0, x1, y1, color);
 }
+void st7889_fill_rect(int16_t x0, int16_t y0, int16_t x1, int16_t y1, uint16_t color) {
+  st7889->fillRect(x0, y0, x1, y1, color);
+}
 void st7889_set_font(const uint8_t *font) { st7889->setFont(font); }
 void st7889_set_cursor(int16_t x, int16_t y) { st7889->setCursor(x, y); }
 void st7889_set_text_color(uint16_t fg_color, uint16_t bg_color) { st7889->setTextColor(fg_color, bg_color); }
