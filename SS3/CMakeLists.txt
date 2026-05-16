@@ -71,7 +71,7 @@ if(SCREEN STREQUAL "ST7789")
 
     fetchcontent_makeavailable(Arduino_GFX)
 
-    target_compile_definitions(Arduino_GFX PUBLIC U8G2_FONT_SUPPORT)
+    target_compile_definitions(Arduino_GFX PUBLIC U8G2_FONT_SUPPORT ATTINY_CORE WITHOUT_STANDARD_FONT)
 
     target_include_directories(Arduino_GFX PRIVATE
         ${CMAKE_SOURCE_DIR}/arduino
