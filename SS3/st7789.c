@@ -9,6 +9,7 @@
 #include "configuration.h"
 #include "display.h"
 #include "heat.h"
+#include "iron.h"
 #include "main.h"
 #include "tick.h"
 #include "tip.h"
@@ -466,21 +467,44 @@ static const uint16_t ST7789_VOLTAGE_COLOR = RGB565_CYAN;
 static const unsigned int ST7789_SCREEN_HEIGHT = 170;
 static const unsigned int ST7789_SCREEN_WIDTH = 320;
 
-static const unsigned int ST7789_MAIN_BASELINE = 140;
+// 1024 by  613
+static const unsigned int ST7789_FONT_60_H = 60;
+static const unsigned int ST7789_FONT_60_W = 36;
+
+// static const unsigned int ST7789_FONT_48_H = 48;
+// static const unsigned int ST7789_FONT_48_W = 29;
+
+static const unsigned int ST7789_FONT_24_H = 24;
+static const unsigned int ST7789_FONT_24_W = 14;
+
+static const unsigned int ST7789_MAIN_BASELINE = (ST7789_SCREEN_HEIGHT + (ST7789_FONT_60_H * 8 / 10) * 2) / 2;
 
 static const unsigned int ST7789_RIGHT_COLUMN_MARGIN = 10;
-static const unsigned int ST7789_RIGHT_COLUMN = (36 * 2) * 3 + ST7789_RIGHT_COLUMN_MARGIN;
+static const unsigned int ST7789_RIGHT_COLUMN = (ST7789_FONT_60_W * 2) * 3 + ST7789_RIGHT_COLUMN_MARGIN;
 static const unsigned int ST7789_RIGHT_COLUMN_X = (ST7789_SCREEN_WIDTH - ST7789_RIGHT_COLUMN) / 3;
 static const unsigned int ST7789_RIGHT_COLUMN_BOTTOM = ST7789_SCREEN_HEIGHT - 8;
 
-static const unsigned int ST7789_SETPOINT_BOTTOM = 24 * 1;
-static const unsigned int ST7789_SETPOINT_LEFT = (ST7789_RIGHT_COLUMN + ST7789_SCREEN_WIDTH) / 2 - (14 * 6) / 2;
+static const unsigned int ST7789_SETPOINT_BOTTOM = ST7789_FONT_24_H * 1;
+static const unsigned int ST7789_SETPOINT_LEFT =
+    (ST7789_RIGHT_COLUMN + ST7789_SCREEN_WIDTH) / 2 - (ST7789_FONT_24_W * 6) / 2;
 
 static const unsigned int ST7789_LINE_SPACE = 6;
 
-static const unsigned int ST7789_VOLTAGE_BOTTOM = 24 * 2 + ST7789_LINE_SPACE * 1;
+static const unsigned int ST7789_VOLTAGE_BOTTOM = ST7789_FONT_24_H * 2 + ST7789_LINE_SPACE * 1;
 
-static const unsigned int ST7789_DUTY_BOTTOM = 24 * 3 + ST7789_LINE_SPACE * 2;
+static const unsigned int ST7789_DUTY_BOTTOM = ST7789_FONT_24_H * 3 + ST7789_LINE_SPACE * 2;
+
+static const unsigned int ST7789_HEADER_CHARACTER_WIDTH = ST7789_FONT_24_W;
+static const unsigned int ST7789_HEADER_BASELINE = 30;
+static const unsigned int ST7789_HEADER_HEIGHT = 40;
+
+static const unsigned int ST7789_VIEW_CHARACTER_WIDTH = ST7789_FONT_24_W;
+static const unsigned int ST7789_VIEW_BASELINE = (ST7789_SCREEN_HEIGHT + 30) / 2;
+
+static const unsigned int ST7789_MENU_CHARACTER_WIDTH = ST7789_FONT_24_W;
+static const unsigned int ST7789_MENU_TOP = ST7789_HEADER_HEIGHT + ST7789_FONT_24_H;
+static const unsigned int ST7789_MENU_ROW_HEIGHT = ST7789_FONT_24_H;
+static const unsigned int ST7789_MENU_VISIBLE = 5;
 
 static const int ST7789_MAIN_PERIOD_IIR_WINDOW = 8;
 static const int ST7789_LEFT_TEMPERATURE_IIR_WINDOW = 32;
@@ -488,18 +512,6 @@ static const int ST7789_RIGHT_TEMPERATURE_IIR_WINDOW = 32;
 
 static const int ST7789_TEMPERATURE_SLOW_UPDATE_MS = 1000;
 static const int ST7789_TEMPERATURE_SLOW_THRESHOLD_DEG = 2;
-
-static const int ST7789_HEADER_CHARACTER_WIDTH = 14;
-static const unsigned int ST7789_HEADER_BASELINE = 30;
-static const unsigned int ST7789_HEADER_HEIGHT = 40;
-
-static const int ST7789_VIEW_CHARACTER_WIDTH = 14;
-static const unsigned int ST7789_VIEW_BASELINE = (ST7789_SCREEN_HEIGHT + 30) / 2;
-
-static const unsigned int ST7789_MENU_TOP = ST7789_HEADER_HEIGHT + 8;
-static const unsigned int ST7789_MENU_ROW_HEIGHT = 25;
-static const unsigned int ST7789_MENU_ROW_OFFSET = 12;
-static const unsigned int ST7789_MENU_VISIBLE = 5;
 
 static const int ST7789_BLINK_DELAY = 1028;
 
@@ -523,7 +535,7 @@ static inline void yield(void) { coru_yield(); }
 #else
 static inline void yield(void) {}
 #endif
-#define TEST
+// #define TEST
 #ifdef TEST
 #define reed_state reed_state_test
 #define tip_type tip_type_test
@@ -534,7 +546,9 @@ static inline void yield(void) {}
 #define left_temperature left_temperature_test
 #define heat_setpoint heat_setpoint_test
 #define heat_state heat_state_test
+#define display_state display_state_test
 
+static DisplayState display_state = DISPLAY_STATE_ADJ_UNIT;
 static TipType tip_type = TIP_TYPE_WMRT;
 static ReedState reed_state = REED_STATE_CLOSED;
 static HeatState heat_state = HEAT_STATE_NORMAL;
@@ -587,8 +601,6 @@ static CACHED_VALUE_DECL(DiagMenu, diag_menu, 0);
  *                                                                                                                   *
  *********************************************************************************************************************/
 
-static void st7789_clear(void) { st7889_fill_screen(ST7789_BG_COLOR); }
-
 TESTABLE int snprint_int(char *buf, size_t size, int value, char pad, int width) {
   int neg = value < 0;
   unsigned int uval = ABS(value);
@@ -596,7 +608,10 @@ TESTABLE int snprint_int(char *buf, size_t size, int value, char pad, int width)
   /* Count digits */
   int ndigits = 0;
   unsigned int tmp = uval;
-  do { ndigits++; tmp /= 10; } while (tmp > 0);
+  do {
+    ndigits++;
+    tmp /= 10;
+  } while (tmp > 0);
 
   /* Count pads */
   int padding_width = neg ? width - 1 : width;
@@ -621,12 +636,6 @@ TESTABLE int snprint_int(char *buf, size_t size, int value, char pad, int width)
   buf[len] = '\0';
 
   return would_write;
-}
-
-static uint16_t st7789_temperature_color(int temperature) {
-  int index = temperature * ARRAY_SIZE(TEMPEATURE_COLOR_LUT) / TEMPERATURE_COLOR_MAX;
-  index = MIN(MAX(index, 0), ARRAY_SIZE(TEMPEATURE_COLOR_LUT) - 1);
-  return TEMPEATURE_COLOR_LUT[index];
 }
 
 TESTABLE int print_temperature(char *s, size_t n, int temperature, bool unit, bool offset) {
@@ -655,6 +664,14 @@ TESTABLE int print_temperature(char *s, size_t n, int temperature, bool unit, bo
 
   return written;
 }
+
+static uint16_t st7789_temperature_color(int temperature) {
+  int index = temperature * ARRAY_SIZE(TEMPEATURE_COLOR_LUT) / TEMPERATURE_COLOR_MAX;
+  index = MIN(MAX(index, 0), ARRAY_SIZE(TEMPEATURE_COLOR_LUT) - 1);
+  return TEMPEATURE_COLOR_LUT[index];
+}
+
+static void st7789_clear(void) { st7889_fill_screen(ST7789_BG_COLOR); }
 
 static void st7789_duty_signal(uint16_t x, uint16_t y, int duty) {
   uint8_t level;
@@ -871,10 +888,9 @@ static void update_header(void) {
 
 static void update_view(const char *txt) {
   update_header();
-
-  int x = MAX(0, (ST7789_SCREEN_WIDTH - strlen(txt) * ST7789_VIEW_CHARACTER_WIDTH) / 2);
-
+  int txt_len = strlen(txt);
   char line[MAX_SCREEN_BUFFER_SIZE(ST7789_SCREEN_WIDTH, ST7789_VIEW_CHARACTER_WIDTH)];
+  int x = MAX(0, ((sizeof(line) - 1) - txt_len) / 2);
   memset(line, CHAR_SPACE[0], x);
   int index = x;
   const int max = sizeof(line) - 1;
@@ -920,13 +936,13 @@ static void update_menu(const char *const items[], unsigned int item_count, unsi
 
   st7889_set_font(inconsolata24);
 
-  char line[32];
+  char line[MAX_SCREEN_BUFFER_SIZE(ST7789_SCREEN_WIDTH, ST7789_MENU_CHARACTER_WIDTH)];
 
   for (unsigned int row = 0; row < ST7789_MENU_VISIBLE; row++) {
 
     unsigned int item_index = scroll_offset + row;
 
-    int y = ST7789_MENU_TOP + row * ST7789_MENU_ROW_HEIGHT + ST7789_MENU_ROW_OFFSET;
+    int y = ST7789_MENU_TOP + row * ST7789_MENU_ROW_HEIGHT;
 
     bool selected = (item_index == selected_index);
 
@@ -965,13 +981,13 @@ static void update_menu(const char *const items[], unsigned int item_count, unsi
   st7889_set_text_color(RGB565_WHITE, RGB565_BLACK);
 
   /* up */
-  st7889_set_cursor(ST7789_SCREEN_WIDTH - ST7789_HEADER_CHARACTER_WIDTH, ST7789_MENU_TOP + ST7789_MENU_ROW_OFFSET);
+  st7889_set_cursor(ST7789_SCREEN_WIDTH - ST7789_HEADER_CHARACTER_WIDTH, ST7789_MENU_TOP);
 
   st7889_print((scroll_offset > 0) ? CHAR_UP : CHAR_SPACE);
 
   /* down */
   st7889_set_cursor(ST7789_SCREEN_WIDTH - ST7789_HEADER_CHARACTER_WIDTH,
-                    ST7789_MENU_TOP + (ST7789_MENU_VISIBLE - 1) * ST7789_MENU_ROW_HEIGHT + ST7789_MENU_ROW_OFFSET);
+                    ST7789_MENU_TOP + (ST7789_MENU_VISIBLE - 1) * ST7789_MENU_ROW_HEIGHT);
 
   st7889_print((scroll_offset + ST7789_MENU_VISIBLE < item_count) ? CHAR_DOWN : CHAR_SPACE);
 }
@@ -1076,7 +1092,7 @@ static void screen_redraw(void) {
     break;
   case DISPLAY_STATE_ADJ_UNIT:
     if (CACHED_VALUE_NEEDS_REDRAW(temperature_unit, st7789_force_redraw)) {
-      update_view((CACHED_VALUE_GET(temperature_unit) == TEMPERATURE_UNIT_C) ? "C" : "F");
+      update_view((CACHED_VALUE_GET(temperature_unit) == TEMPERATURE_UNIT_C) ? CELSIUS_SUFFIX : FAHRENHEIT_SUFFIX);
 
       CACHED_VALUE_ACK(temperature_unit);
     }
