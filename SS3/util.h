@@ -11,6 +11,12 @@
 #define NULL ((void *)0)
 #endif
 
+#ifndef SIMULATION
+#define TESTABLE static
+#else
+#define TESTABLE
+#endif
+
 //
 // Maths
 //

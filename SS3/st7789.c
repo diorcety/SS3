@@ -33,6 +33,8 @@
 #define RGB565(r, g, b) ((((r) & 0xF8) << 8) | (((g) & 0xFC) << 3) | ((b) >> 3))
 #define RGB16TO24(c) ((((uint32_t)c & 0xF800) << 8) | ((c & 0x07E0) << 5) | ((c & 0x1F) << 3))
 
+#define MAX_SCREEN_BUFFER_SIZE(SCREEN, CHARACTER) (((SCREEN) / (CHARACTER)) + 1)
+
 /*********************************************************************************************************************
  *                                                                                                                   *
  *                                                 CONSTANTS                                                         *
@@ -213,6 +215,7 @@
 #define CHAR_SIGNAL3 "\x98"
 #define CHAR_SIGNAL4 "\x99"
 #define CHAR_SIGNAL5 "\x9A"
+#define CHAR_DEGREE "\xB0"
 
 #define SIGNAL1_COLOR RGB565(0, 255, 0)
 #define SIGNAL2_COLOR RGB565(128, 255, 0)
@@ -358,10 +361,9 @@ static const uint16_t TEMPERATURE_COLOR_MAX = 500;
 static char const *const ON_TXT = "On";
 static char const *const OFF_TXT = "Off";
 
-static char const *const NUMBER_FORMAT = "%d";
-static char const *const TEMPERATURE_CELCIUS_FORMAT = "%03d°C";
-static char const *const TEMPERATURE_FAHRENHEIT_FORMAT = "%03d°F";
-static char const *const FREQUENCY_FORMAT = "%d Hz";
+static char const *const FREQUENCY_SUFFIX = " Hz";
+static char const *const CELSIUS_SUFFIX = CHAR_DEGREE "C";
+static char const *const FAHRENHEIT_SUFFIX = CHAR_DEGREE "F";
 
 static char const *const main_menu_txt[] = {
     [MAIN_MENU_BACK] = "Back",
@@ -491,6 +493,9 @@ static const int ST7789_HEADER_CHARACTER_WIDTH = 14;
 static const unsigned int ST7789_HEADER_BASELINE = 30;
 static const unsigned int ST7789_HEADER_HEIGHT = 40;
 
+static const int ST7789_VIEW_CHARACTER_WIDTH = 14;
+static const unsigned int ST7789_VIEW_BASELINE = (ST7789_SCREEN_HEIGHT + 30) / 2;
+
 static const unsigned int ST7789_MENU_TOP = ST7789_HEADER_HEIGHT + 8;
 static const unsigned int ST7789_MENU_ROW_HEIGHT = 25;
 static const unsigned int ST7789_MENU_ROW_OFFSET = 12;
@@ -584,22 +589,71 @@ static CACHED_VALUE_DECL(DiagMenu, diag_menu, 0);
 
 static void st7789_clear(void) { st7889_fill_screen(ST7789_BG_COLOR); }
 
+TESTABLE int snprint_int(char *buf, size_t size, int value, char pad, int width) {
+  int neg = value < 0;
+  unsigned int uval = ABS(value);
+
+  /* Count digits */
+  int ndigits = 0;
+  unsigned int tmp = uval;
+  do { ndigits++; tmp /= 10; } while (tmp > 0);
+
+  /* Count pads */
+  int padding_width = neg ? width - 1 : width;
+  int npad = MAX(padding_width - ndigits, 0);
+
+  int would_write = (neg ? 1 : 0) + npad + ndigits;
+  if (size == 0)
+    return would_write;
+
+  int len = MIN(would_write, (int)size - 1);
+
+  /* Fill right-to-left: digits, then padding, then sign */
+  int pos = len - 1;
+  unsigned int u = uval;
+  for (int i = 0; i < ndigits && pos >= 0; i++, pos--)
+    buf[pos] = '0' + (u % 10), u /= 10;
+  for (int i = 0; i < npad && pos >= 0; i++, pos--)
+    buf[pos] = pad;
+  if (neg && pos >= 0)
+    buf[pos] = '-';
+
+  buf[len] = '\0';
+
+  return would_write;
+}
+
 static uint16_t st7789_temperature_color(int temperature) {
   int index = temperature * ARRAY_SIZE(TEMPEATURE_COLOR_LUT) / TEMPERATURE_COLOR_MAX;
   index = MIN(MAX(index, 0), ARRAY_SIZE(TEMPEATURE_COLOR_LUT) - 1);
   return TEMPEATURE_COLOR_LUT[index];
 }
 
-static int print_temperature(char *s, size_t n, int temperature, bool absolute) {
-  if ((TemperatureUnit)temperature_unit == TEMPERATURE_UNIT_C) {
-    return snprintf(s, n, TEMPERATURE_CELCIUS_FORMAT, temperature);
-  } else {
+TESTABLE int print_temperature(char *s, size_t n, int temperature, bool unit, bool offset) {
+  if ((TemperatureUnit)temperature_unit == TEMPERATURE_UNIT_F) {
     temperature = temperature * 9 / 5;
-    if (absolute) {
+    if (offset) {
       temperature += 32;
     }
-    return snprintf(s, n, TEMPERATURE_FAHRENHEIT_FORMAT, temperature);
   }
+
+  int written = snprint_int(s, n, temperature, '0', 3);
+
+  if (unit) {
+    const char *suffix = (TemperatureUnit)temperature_unit == TEMPERATURE_UNIT_C ? CELSIUS_SUFFIX : FAHRENHEIT_SUFFIX;
+    while (*suffix != '\0') {
+      if (written < (int)n - 1) {
+        s[written] = *suffix;
+      }
+      written++;
+      suffix++;
+    }
+    if (written < (int)n) {
+      s[written] = '\0';
+    }
+  }
+
+  return written;
 }
 
 static void st7789_duty_signal(uint16_t x, uint16_t y, int duty) {
@@ -723,7 +777,7 @@ static void update_main(void) {
         st7889_set_cursor(0, ST7789_MAIN_BASELINE);
         st7889_set_text_color(st7789_temperature_color(temperature), ST7789_BG_COLOR);
         char buffer[4];
-        snprintf(buffer, sizeof(buffer), "%03d", temperature);
+        print_temperature(buffer, sizeof(buffer), temperature, false, true);
         st7889_print(buffer);
         st7889_set_text_size(1);
       }
@@ -737,7 +791,7 @@ static void update_main(void) {
     st7889_set_text_color(RGB565_WHITE, ST7789_BG_COLOR);
     char sp_buf[8];
     sp_buf[0] = CHAR_TARGET[0];
-    print_temperature(&sp_buf[1], sizeof(sp_buf) - 1, CACHED_VALUE_GET(heat_setpoint), true);
+    print_temperature(&sp_buf[1], sizeof(sp_buf) - 1, CACHED_VALUE_GET(heat_setpoint), true, true);
     st7889_print(sp_buf);
 
     CACHED_VALUE_ACK(heat_setpoint);
@@ -806,7 +860,7 @@ static void update_header(void) {
     st7889_fill_rect(0, 0, ST7789_SCREEN_WIDTH, ST7789_HEADER_HEIGHT, ST7789_HEADER_COLOR);
     st7889_draw_line(0, ST7789_HEADER_HEIGHT, ST7789_SCREEN_WIDTH, ST7789_HEADER_HEIGHT, RGB565_WHITE);
 
-    int x = (ST7789_SCREEN_WIDTH - strlen(header) * ST7789_HEADER_CHARACTER_WIDTH) / 2;
+    int x = MAX(0, (ST7789_SCREEN_WIDTH - strlen(header) * ST7789_HEADER_CHARACTER_WIDTH) / 2);
 
     st7889_set_font(inconsolata24);
     st7889_set_cursor(x, ST7789_HEADER_BASELINE);
@@ -816,18 +870,26 @@ static void update_header(void) {
 }
 
 static void update_view(const char *txt) {
-  /* --- header ----------------------------- */
   update_header();
 
-  char line[32];
-  int x = MAX(0, (11 - strlen(txt)) / 2);
+  int x = MAX(0, (ST7789_SCREEN_WIDTH - strlen(txt) * ST7789_VIEW_CHARACTER_WIDTH) / 2);
+
+  char line[MAX_SCREEN_BUFFER_SIZE(ST7789_SCREEN_WIDTH, ST7789_VIEW_CHARACTER_WIDTH)];
   memset(line, CHAR_SPACE[0], x);
-  snprintf(&line[x], sizeof(line) - x, "%-11s", txt);
+  int index = x;
+  const int max = sizeof(line) - 1;
+  while (index < max && *txt != '\0') {
+    line[index++] = *txt++;
+  }
+  while (index < max) {
+    line[index++] = CHAR_SPACE[0];
+  }
+  line[max] = '\0';
 
   st7889_set_font(inconsolata24);
-  st7889_set_cursor(0, ST7789_HEADER_BASELINE);
+  st7889_set_cursor(0, ST7789_VIEW_BASELINE);
   st7889_set_text_color(RGB565_WHITE, RGB565_WHITE);
-  st7889_print(txt);
+  st7889_print(line);
 }
 
 static void update_menu(const char *const items[], unsigned int item_count, unsigned int selected_index) {
@@ -876,12 +938,23 @@ static void update_menu(const char *const items[], unsigned int item_count, unsi
 
     st7889_set_text_color(fg, bg);
 
+    int index = 0;
+    const int max = sizeof(line) - 1;
+
     if (item_index < item_count) {
-      snprintf(line, sizeof(line), "%s %-20s", selected ? CHAR_RIGHT : CHAR_SPACE, items[item_index]);
-    } else {
-      snprintf(line, sizeof(line), CHAR_SPACE);
+      line[index++] = selected ? CHAR_RIGHT[0] : CHAR_SPACE[0];
+      line[index++] = CHAR_SPACE[0];
+
+      const char *item = items[item_index];
+      while (index < max && *item != '\0') {
+        line[index++] = *item++;
+      }
     }
 
+    while (index < max) {
+      line[index++] = CHAR_SPACE[0];
+    }
+    line[max] = '\0';
     st7889_print(line);
   }
 
@@ -963,7 +1036,7 @@ static void screen_redraw(void) {
     break;
   case DISPLAY_STATE_ADJ_SETBACK:
     if (CACHED_VALUE_NEEDS_REDRAW(setback, st7789_force_redraw)) {
-      snprintf(buf, sizeof(buf), NUMBER_FORMAT, CACHED_VALUE_GET(setback));
+      snprint_int(buf, sizeof(buf), CACHED_VALUE_GET(setback), CHAR_SPACE[0], 0);
       update_view(buf);
 
       CACHED_VALUE_ACK(setback);
@@ -974,7 +1047,7 @@ static void screen_redraw(void) {
       if (CACHED_VALUE_GET(setback_delay) == SETBACK_DELAY_MIN)
         update_view(OFF_TXT);
       else {
-        snprintf(buf, sizeof(buf), NUMBER_FORMAT, CACHED_VALUE_GET(setback_delay));
+        snprint_int(buf, sizeof(buf), CACHED_VALUE_GET(setback_delay), CHAR_SPACE[0], 0);
         update_view(buf);
       }
 
@@ -986,7 +1059,7 @@ static void screen_redraw(void) {
       if (CACHED_VALUE_GET(standby_delay) == STANDBY_DELAY_MIN)
         update_view(OFF_TXT);
       else {
-        snprintf(buf, sizeof(buf), NUMBER_FORMAT, CACHED_VALUE_GET(standby_delay));
+        snprint_int(buf, sizeof(buf), CACHED_VALUE_GET(standby_delay), CHAR_SPACE[0], 0);
         update_view(buf);
       }
 
@@ -995,7 +1068,7 @@ static void screen_redraw(void) {
     break;
   case DISPLAY_STATE_ADJ_OFFSET:
     if (CACHED_VALUE_NEEDS_REDRAW(temperature_offset, st7789_force_redraw)) {
-      print_temperature(buf, sizeof(buf), CACHED_VALUE_GET(temperature_offset), false);
+      print_temperature(buf, sizeof(buf), CACHED_VALUE_GET(temperature_offset), true, false);
       update_view(buf);
 
       CACHED_VALUE_ACK(temperature_offset);
@@ -1010,7 +1083,7 @@ static void screen_redraw(void) {
     break;
   case DISPLAY_STATE_ADJ_STEP_SIZE:
     if (CACHED_VALUE_NEEDS_REDRAW(step_size, st7789_force_redraw)) {
-      print_temperature(buf, sizeof(buf), CACHED_VALUE_GET(step_size), false);
+      print_temperature(buf, sizeof(buf), CACHED_VALUE_GET(step_size), true, false);
       update_view(buf);
 
       CACHED_VALUE_ACK(step_size);
@@ -1018,7 +1091,7 @@ static void screen_redraw(void) {
     break;
   case DISPLAY_STATE_SHOW_COLD_COMPENSATION:
     if (CACHED_VALUE_NEEDS_REDRAW(kty_value, st7789_force_redraw)) {
-      snprintf(buf, sizeof(buf), NUMBER_FORMAT, CACHED_VALUE_GET(kty_value));
+      snprint_int(buf, sizeof(buf), CACHED_VALUE_GET(kty_value), CHAR_SPACE[0], 0);
       update_view(buf);
 
       CACHED_VALUE_ACK(kty_value);
@@ -1026,7 +1099,7 @@ static void screen_redraw(void) {
     break;
   case DISPLAY_STATE_ADJ_REFERENCE:
     if (CACHED_VALUE_NEEDS_REDRAW(reference, st7789_force_redraw)) {
-      snprintf(buf, sizeof(buf), NUMBER_FORMAT, CACHED_VALUE_GET(reference));
+      snprint_int(buf, sizeof(buf), CACHED_VALUE_GET(reference), CHAR_SPACE[0], 0);
       update_view(buf);
 
       CACHED_VALUE_ACK(reference);
@@ -1048,7 +1121,8 @@ static void screen_redraw(void) {
   case DISPLAY_STATE_SHOW_FREQUENCY:
     if (CACHED_VALUE_NEEDS_REDRAW(main_period, st7789_force_redraw)) {
       int freq = (int)((1000.0f / 2.0f) / (float)CACHED_VALUE_GET(main_period));
-      snprintf(buf, sizeof(buf), FREQUENCY_FORMAT, freq);
+      int written = snprint_int(buf, sizeof(buf), freq, CHAR_SPACE[0], 0);
+      strncat(&buf[written], FREQUENCY_SUFFIX, sizeof(buf) - written - 1);
       update_view(buf);
 
       CACHED_VALUE_ACK(main_period);
@@ -1056,7 +1130,7 @@ static void screen_redraw(void) {
     break;
   case DISPLAY_STATE_SHOW_TC_1_READING:
     if (CACHED_VALUE_NEEDS_REDRAW(tc_right_temperature, st7789_force_redraw)) {
-      print_temperature(buf, sizeof(buf), CACHED_VALUE_GET(tc_right_temperature), true);
+      print_temperature(buf, sizeof(buf), CACHED_VALUE_GET(tc_right_temperature), true, true);
       update_view(buf);
 
       CACHED_VALUE_ACK(tc_right_temperature);
@@ -1064,7 +1138,7 @@ static void screen_redraw(void) {
     break;
   case DISPLAY_STATE_SHOW_TC_2_READING:
     if (CACHED_VALUE_NEEDS_REDRAW(tc_left_temperature, st7789_force_redraw)) {
-      print_temperature(buf, sizeof(buf), CACHED_VALUE_GET(tc_left_temperature), true);
+      print_temperature(buf, sizeof(buf), CACHED_VALUE_GET(tc_left_temperature), true, true);
       update_view(buf);
 
       CACHED_VALUE_ACK(tc_left_temperature);
@@ -1072,7 +1146,7 @@ static void screen_redraw(void) {
     break;
   case DISPLAY_STATE_SHOW_PWM_1_READING:
     if (CACHED_VALUE_NEEDS_REDRAW(right_duty, st7789_force_redraw)) {
-      snprintf(buf, sizeof(buf), NUMBER_FORMAT, CACHED_VALUE_GET(right_duty));
+      snprint_int(buf, sizeof(buf), CACHED_VALUE_GET(right_duty), CHAR_SPACE[0], 0);
       update_view(buf);
 
       CACHED_VALUE_ACK(right_duty);
@@ -1080,7 +1154,7 @@ static void screen_redraw(void) {
     break;
   case DISPLAY_STATE_SHOW_PWM_2_READING:
     if (CACHED_VALUE_NEEDS_REDRAW(left_duty, st7789_force_redraw)) {
-      snprintf(buf, sizeof(buf), NUMBER_FORMAT, CACHED_VALUE_GET(left_duty));
+      snprint_int(buf, sizeof(buf), CACHED_VALUE_GET(left_duty), CHAR_SPACE[0], 0);
       update_view(buf);
 
       CACHED_VALUE_ACK(left_duty);
@@ -1091,7 +1165,7 @@ static void screen_redraw(void) {
       if (CACHED_VALUE_GET(idle_duty) == 0)
         update_view(OFF_TXT);
       else {
-        snprintf(buf, sizeof(buf), NUMBER_FORMAT, CACHED_VALUE_GET(idle_duty));
+        snprint_int(buf, sizeof(buf), CACHED_VALUE_GET(idle_duty), CHAR_SPACE[0], 0);
         update_view(buf);
       }
 
@@ -1100,7 +1174,7 @@ static void screen_redraw(void) {
     break;
   case DISPLAY_STATE_ADJ_MAX_DUTY:
     if (CACHED_VALUE_NEEDS_REDRAW(max_duty, st7789_force_redraw)) {
-      snprintf(buf, sizeof(buf), NUMBER_FORMAT, CACHED_VALUE_GET(max_duty));
+      snprint_int(buf, sizeof(buf), CACHED_VALUE_GET(max_duty), CHAR_SPACE[0], 0);
       update_view(buf);
 
       CACHED_VALUE_ACK(max_duty);
@@ -1115,8 +1189,13 @@ static void screen_redraw(void) {
     break;
   case DISPLAY_STATE_SHOW_FW_VERSION:
     if (st7789_force_redraw) {
-      snprintf(buf, sizeof(buf), "%02d.%02d", (FW_VERSION / 100) % 100, FW_VERSION % 100);
-      update_view("");
+      int written = 0;
+      written += snprint_int(&buf[written], sizeof(buf) - written, (FW_VERSION / 100) % 100, '0', 2);
+      if (sizeof(buf) - written > 1) {
+        buf[written++] = '.';
+      }
+      written += snprint_int(&buf[written], sizeof(buf) - written, FW_VERSION % 100, '0', 2);
+      update_view(buf);
     }
     break;
   }
