@@ -2,6 +2,9 @@
 #define DISPLAY_H_
 
 #include "button.h"
+#include "tip.h"
+#include "heat.h"
+#include "cached_value.h"
 
 /*********************************************************************************************************************
  *                                                                                                                   *
@@ -83,6 +86,37 @@ extern DisplayState display_state;
 extern MainMenu main_menu;
 extern DiagMenu diag_menu;
 
+// Direct update: no debounce
+CACHED_VALUE_DECL(extern, DisplayState, display_state);
+CACHED_VALUE_DECL(extern, TipType, tip_type);
+CACHED_VALUE_DECL(extern, ReedState, reed_state);
+CACHED_VALUE_DECL(extern, HeatState, heat_state);
+CACHED_VALUE_DECL(extern, int, heat_setpoint);
+CACHED_VALUE_DECL(extern, int, setback);
+CACHED_VALUE_DECL(extern, int, setback_delay);
+CACHED_VALUE_DECL(extern, int, standby_delay);
+CACHED_VALUE_DECL(extern, int, temperature_offset);
+CACHED_VALUE_DECL(extern, int, temperature_unit);
+CACHED_VALUE_DECL(extern, int, step_size);
+CACHED_VALUE_DECL(extern, int, kty_value);
+CACHED_VALUE_DECL(extern, int, reference);
+CACHED_VALUE_DECL(extern, int, idle_duty);
+CACHED_VALUE_DECL(extern, int, max_duty);
+CACHED_VALUE_DECL(extern, int, poor_mode);
+
+// Frequent updates: debounce the input
+CACHED_VALUE_DECL(extern, int, right_duty);
+CACHED_VALUE_DECL(extern, int, left_duty);
+CACHED_VALUE_DECL(extern, int, right_temperature);
+CACHED_VALUE_DECL(extern, int, left_temperature);
+CACHED_VALUE_DECL(extern, int, tc_right_temperature);
+CACHED_VALUE_DECL(extern, int, tc_left_temperature);
+CACHED_VALUE_DECL(extern, int, main_period);
+
+// Menu cache
+CACHED_VALUE_DECL(extern, MainMenu, main_menu);
+CACHED_VALUE_DECL(extern, DiagMenu, diag_menu);
+
 /*********************************************************************************************************************
  *                                                                                                                   *
  *                                                 FUNCTIONS                                                         *
@@ -91,5 +125,6 @@ extern DiagMenu diag_menu;
 
 void display_init(void);
 void display_loop(void);
+void display_invalidate_cached_values(void);
 
 #endif // DISPLAY_H_

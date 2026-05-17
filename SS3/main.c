@@ -37,9 +37,9 @@ static void init(void) {
   acquisition_init();
   tip_init();
   heat_init();
-  display_init();
 
   iron_init();
+  display_init();
 #if defined(USE_SEG7)
   seg7_init();
 #endif
@@ -62,10 +62,10 @@ static void loop(void) {
   acquisition_loop();
   tip_loop();
   heat_loop();
-  display_loop();
 
   // Outputs part
   iron_loop();
+  display_loop();
 #if defined(USE_SEG7)
   seg7_loop();
 #endif

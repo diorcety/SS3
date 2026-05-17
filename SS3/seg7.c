@@ -2,19 +2,30 @@
 
 #if defined(USE_SEG7)
 
-#include "acquisition.h"
 #include "board.h"
 #include "configuration.h"
 #include "display.h"
-#include "heat.h"
 #include "iron.h"
 #include "pt.h"
 #include "tick.h"
-#include "tip.h"
 #include "util.h"
-#include "zcd.h"
 
 #include <string.h>
+
+/*********************************************************************************************************************
+ *                                                                                                                   *
+ *                                                  MACROS                                                           *
+ *                                                                                                                   *
+ *********************************************************************************************************************/
+
+#define SET_MASK(SET, VARIABLE, MASK)                                                                                  \
+  do {                                                                                                                 \
+    if (SET) {                                                                                                         \
+      (VARIABLE) |= (MASK);                                                                                            \
+    } else {                                                                                                           \
+      (VARIABLE) &= ~(MASK);                                                                                           \
+    }                                                                                                                  \
+  } while (0)
 
 /*********************************************************************************************************************
  *                                                                                                                   *
@@ -39,16 +50,8 @@ static const int SPI_OUTPUT_BIT_RATE = REFRESH_HZ * 16 * 8;
 static const int SPI_INPUT_CLOCK = CPUCLK_FREQ / (SPI_PRESCALER + 1);
 static const int SPI_SPEED = SPI_INPUT_CLOCK / (2 * SPI_OUTPUT_BIT_RATE) - 1;
 
-static const int SEG7_MAIN_PERIOD_IIR_WINDOW = 8;
-static const int SEG7_LEFT_TEMPERATURE_IIR_WINDOW = 32;
-static const int SEG7_RIGHT_TEMPERATURE_IIR_WINDOW = 32;
-
 static const int SEG7_SETPOINT_DELAY = 1000;
 static const int SEG7_BLINK_DELAY = 1028;
-static const int SEG7_NUMBER_UPDATE_DELAY = 200;
-
-static const int SEG7_TEMPERATURE_SLOW_UPDATE_MS = 1000;
-static const int SEG7_TEMPERATURE_SLOW_THRESHOLD_DEG = 2;
 
 typedef enum {
   DISPLAY_MODE_C,
@@ -193,23 +196,14 @@ static volatile bool trigger;
 
 static tick_timer_t delay_timer;
 static tick_timer_t current_setpoint_change_timer;
-static int previous_setpoint;
 
-static uint32_t number_last_update;
-static bool number_force_update;
+static bool seg7_force_refresh;
 
-static int main_period_acc;
-static int right_temperature_acc;
-static int right_temperature_filtred;
-static int left_temperature_acc;
-static int left_temperature_filtred;
-
-static uint32_t previous_temperature_update;
+CACHED_VALUE_DECL(static, int, blink);
 
 static uint8_t display[5];
 static uint8_t current_index;
 static uint16_t spi_data;
-static DisplayState previous_display_state;
 
 /*********************************************************************************************************************
  *                                                                                                                   *
@@ -250,13 +244,7 @@ static inline DisplayMode temp_unit(void) {
   return ((TemperatureUnit)temperature_unit == TEMPERATURE_UNIT_C) ? DISPLAY_MODE_C : DISPLAY_MODE_F;
 }
 
-static void display_number(DisplayMode display_mode, int num, bool force) {
-  if (!force && !systick_elapsed(number_last_update, SEG7_NUMBER_UPDATE_DELAY)) {
-    return;
-  }
-  number_force_update = false;
-  number_last_update = systick_get();
-
+static void display_number(DisplayMode display_mode, int num) {
   int j; // Digit index
 
   switch (display_mode) {
@@ -329,150 +317,259 @@ static void update_menu_diag_display(void) {
 }
 
 static void update_display(void) {
-  if (previous_display_state != display_state) {
-    number_force_update = true;
-    previous_display_state = display_state;
+  seg7_force_refresh = false;
+  if (CACHED_VALUE_NEEDS_REDRAW(display_state, false)) {
+    seg7_force_refresh = true;
+    display_invalidate_cached_values();
+    CACHED_VALUE_ACK(display_state);
+  }
+
+  // Detect setpoint changes
+  if (CACHED_VALUE_NEEDS_REDRAW(heat_setpoint, false)) {
+    tick_timer_start(&current_setpoint_change_timer, SEG7_SETPOINT_DELAY, true);
+    CACHED_VALUE_ACK(heat_setpoint);
   }
 
   switch (display_state) {
   case DISPLAY_STATE_MAIN:
     if (heat_state == HEAT_STATE_STANDBY) {
-      display_text(stby);
+      if (seg7_force_refresh) {
+        display_text(stby);
+      }
     } else if (heat_state == HEAT_STATE_ERROR) {
-      display_text(err);
+      if (CACHED_VALUE_NEEDS_REDRAW(blink, seg7_force_refresh)) {
+        // Blink the error message
+        if (CACHED_VALUE_GET(blink) % 2 == 0) {
+          display_text(err);
+        } else {
+          display[0] = _SPACE;
+          display[1] = _SPACE;
+          display[2] = _SPACE;
+          display[3] = _SPACE;
+        }
+
+        CACHED_VALUE_ACK(blink);
+      }
     } else if (tick_timer_is_running(&current_setpoint_change_timer, true)) {
-      display_number(temp_unit(), heat_setpoint, number_force_update);
-    } else if (tip_type == TIP_TYPE_NC) {
-      display_text(nc);
-    } else if (tip_type != TIP_TYPE_WMRT) {
-      display_number(temp_unit(), right_temperature_filtred, number_force_update);
+      display_number(temp_unit(), heat_setpoint);
     } else {
-      display_number(temp_unit(), (left_temperature_filtred + right_temperature_filtred) / 2, number_force_update);
+      TipType tip_type = CACHED_VALUE_GET(tip_type);
+      if (tip_type == TIP_TYPE_NC) {
+        if (seg7_force_refresh) {
+          display_text(nc);
+        }
+      } else if (tip_type != TIP_TYPE_WMRT) {
+        if (CACHED_VALUE_NEEDS_REDRAW(right_temperature, seg7_force_refresh)) {
+          display_number(temp_unit(), CACHED_VALUE_GET(right_temperature));
+
+          CACHED_VALUE_ACK(right_temperature);
+        }
+      } else {
+        if (CACHED_VALUE_NEEDS_REDRAW(right_temperature, seg7_force_refresh) ||
+            CACHED_VALUE_NEEDS_REDRAW(left_temperature, seg7_force_refresh)) {
+          int temperature = (CACHED_VALUE_GET(right_temperature) + CACHED_VALUE_GET(left_temperature)) / 2;
+
+          display_number(temp_unit(), temperature);
+
+          CACHED_VALUE_ACK(right_temperature);
+          CACHED_VALUE_ACK(left_temperature);
+        }
+      }
     }
-    if (right_heat) {
-      display[3] |= _POINT;
-    }
-    if (left_heat) {
-      display[0] |= _POINT;
-    }
-    if (reed_state == REED_STATE_CLOSED) {
-      display[1] |= _POINT;
-    }
+
+    SET_MASK(right_heat, display[3], _POINT);
+    SET_MASK(left_heat, display[0], _POINT);
+    SET_MASK(reed_state == REED_STATE_CLOSED, display[1], _POINT);
 
     // Blink the colon when the system is in a transitional state (not normal or error)
-    if (heat_state > HEAT_STATE_NORMAL && heat_state < HEAT_STATE_ERROR &&
-        (systick_counter % SEG7_BLINK_DELAY) < (SEG7_BLINK_DELAY / 2)) {
-      display[4] |= _COLON;
-    }
-
-    // Blink the entire display when the system is in the error state
-    if (heat_state == HEAT_STATE_ERROR && (systick_counter % SEG7_BLINK_DELAY) < (SEG7_BLINK_DELAY / 2)) {
-      display[0] = _SPACE;
-      display[1] = _SPACE;
-      display[2] = _SPACE;
-      display[3] = _SPACE;
-    }
+    SET_MASK(heat_state > HEAT_STATE_NORMAL && heat_state < HEAT_STATE_ERROR && CACHED_VALUE_GET(blink) % 2 == 0,
+             display[4],
+             _COLON);
     break;
 
   case DISPLAY_STATE_MAIN_MENU:
-    update_main_menu_display();
+    if (CACHED_VALUE_NEEDS_REDRAW(main_menu, seg7_force_refresh)) {
+      update_main_menu_display();
+
+      CACHED_VALUE_ACK(main_menu);
+    }
     break;
 
   case DISPLAY_STATE_ADJ_SETBACK:
-    display_number(temp_unit(), setback, true);
+    if (CACHED_VALUE_NEEDS_REDRAW(setback, seg7_force_refresh)) {
+      display_number(temp_unit(), CACHED_VALUE_GET(setback));
+
+      CACHED_VALUE_ACK(setback);
+    }
     break;
 
   case DISPLAY_STATE_ADJ_SETBACK_DELAY:
-    if (setback_delay == SETBACK_DELAY_MIN) {
-      display_text(off);
-    } else {
-      display_number(DISPLAY_MODE_NUM, setback_delay, true);
+    if (CACHED_VALUE_NEEDS_REDRAW(setback_delay, seg7_force_refresh)) {
+      if (CACHED_VALUE_GET(setback_delay) == SETBACK_DELAY_MIN) {
+        display_text(off);
+      } else {
+        display_number(DISPLAY_MODE_NUM, CACHED_VALUE_GET(setback_delay));
+      }
+
+      CACHED_VALUE_ACK(setback_delay);
     }
     break;
 
   case DISPLAY_STATE_ADJ_STANDBY_DELAY:
-    if (standby_delay == STANDBY_DELAY_MIN) {
-      display_text(off);
-    } else {
-      display_number(DISPLAY_MODE_NUM, standby_delay, true);
+    if (CACHED_VALUE_NEEDS_REDRAW(standby_delay, seg7_force_refresh)) {
+      int standby_delay = CACHED_VALUE_GET(standby_delay);
+      if (standby_delay == STANDBY_DELAY_MIN) {
+        display_text(off);
+      } else {
+        display_number(DISPLAY_MODE_NUM, standby_delay);
+      }
+
+      CACHED_VALUE_ACK(standby_delay);
     }
     break;
 
   case DISPLAY_STATE_ADJ_OFFSET:
-    display_number(temp_unit(), temperature_offset, true);
+    if (CACHED_VALUE_NEEDS_REDRAW(temperature_offset, seg7_force_refresh)) {
+      display_number(temp_unit(), CACHED_VALUE_GET(temperature_offset));
+
+      CACHED_VALUE_ACK(temperature_offset);
+    }
     break;
 
   case DISPLAY_STATE_ADJ_UNIT:
-    display_number(temp_unit(), 0, true);
+    if (CACHED_VALUE_NEEDS_REDRAW(temperature_unit, seg7_force_refresh)) {
+      display_number(temp_unit(), 0);
+
+      CACHED_VALUE_ACK(temperature_unit);
+    }
     break;
 
   case DISPLAY_STATE_ADJ_STEP_SIZE:
-    display_number(temp_unit(), step_size, true);
+    if (CACHED_VALUE_NEEDS_REDRAW(step_size, seg7_force_refresh)) {
+      display_number(temp_unit(), CACHED_VALUE_GET(step_size));
+
+      CACHED_VALUE_ACK(step_size);
+    }
     break;
 
   case DISPLAY_STATE_DIAG_MENU:
-    update_menu_diag_display();
+    if (CACHED_VALUE_NEEDS_REDRAW(diag_menu, seg7_force_refresh)) {
+      update_menu_diag_display();
+
+      CACHED_VALUE_ACK(diag_menu);
+    }
     break;
 
   case DISPLAY_STATE_SHOW_COLD_COMPENSATION:
-    display_number(temp_unit(), (int)kty_value, number_force_update);
+    if (CACHED_VALUE_NEEDS_REDRAW(kty_value, seg7_force_refresh)) {
+      display_number(temp_unit(), CACHED_VALUE_GET(kty_value));
+
+      CACHED_VALUE_ACK(kty_value);
+    }
     break;
 
   case DISPLAY_STATE_ADJ_REFERENCE:
-    display_number(DISPLAY_MODE_REF, reference, true);
+    if (CACHED_VALUE_NEEDS_REDRAW(reference, seg7_force_refresh)) {
+      display_number(DISPLAY_MODE_REF, CACHED_VALUE_GET(reference));
+
+      CACHED_VALUE_ACK(reference);
+    }
     break;
 
   case DISPLAY_STATE_SHOW_TIP_TYPE:
-    display_text(tip_txt[tip_type]);
+    if (CACHED_VALUE_NEEDS_REDRAW(tip_type, seg7_force_refresh)) {
+      display_text(tip_txt[CACHED_VALUE_GET(tip_type)]);
+
+      CACHED_VALUE_ACK(tip_type);
+    }
     break;
 
   case DISPLAY_STATE_SHOW_REED_STATE:
-    display_text(reed_txt[reed_state]);
+    if (CACHED_VALUE_NEEDS_REDRAW(reed_state, seg7_force_refresh)) {
+      display_text(reed_txt[CACHED_VALUE_GET(reed_state)]);
+
+      CACHED_VALUE_ACK(reed_state);
+    }
     break;
 
-  case DISPLAY_STATE_SHOW_FREQUENCY: {
-    int main_frequency = (int)((1000.0f / 2.0f) / (float)IIR_FILTER_GET(SEG7_MAIN_PERIOD_IIR_WINDOW, main_period_acc));
-    display_number(DISPLAY_MODE_NUM, main_frequency, number_force_update);
-  } break;
+  case DISPLAY_STATE_SHOW_FREQUENCY:
+    if (CACHED_VALUE_NEEDS_REDRAW(main_period, seg7_force_refresh)) {
+      int main_frequency = (int)((1000.0f / 2.0f) / (float)CACHED_VALUE_GET(main_period));
+      display_number(DISPLAY_MODE_NUM, main_frequency);
+
+      CACHED_VALUE_ACK(main_period);
+    }
+    break;
 
   case DISPLAY_STATE_SHOW_TC_1_READING:
-    display_number(temp_unit(), (int)tc_right_temperature, number_force_update);
+    if (CACHED_VALUE_NEEDS_REDRAW(tc_right_temperature, seg7_force_refresh)) {
+      display_number(temp_unit(), CACHED_VALUE_GET(tc_right_temperature));
+
+      CACHED_VALUE_ACK(tc_right_temperature);
+    }
     break;
 
   case DISPLAY_STATE_SHOW_TC_2_READING:
-    display_number(temp_unit(), (int)tc_left_temperature, number_force_update);
+    if (CACHED_VALUE_NEEDS_REDRAW(tc_left_temperature, seg7_force_refresh)) {
+      display_number(temp_unit(), CACHED_VALUE_GET(tc_left_temperature));
+
+      CACHED_VALUE_ACK(tc_left_temperature);
+    }
     break;
 
   case DISPLAY_STATE_SHOW_PWM_1_READING:
-    display_number(DISPLAY_MODE_NUM, right_duty, number_force_update);
+    if (CACHED_VALUE_NEEDS_REDRAW(right_duty, seg7_force_refresh)) {
+      display_number(DISPLAY_MODE_NUM, CACHED_VALUE_GET(right_duty));
+
+      CACHED_VALUE_ACK(right_duty);
+    }
     break;
 
   case DISPLAY_STATE_SHOW_PWM_2_READING:
-    display_number(DISPLAY_MODE_NUM, left_duty, number_force_update);
+    if (CACHED_VALUE_NEEDS_REDRAW(left_duty, seg7_force_refresh)) {
+      display_number(DISPLAY_MODE_NUM, CACHED_VALUE_GET(left_duty));
+
+      CACHED_VALUE_ACK(left_duty);
+    }
     break;
 
   case DISPLAY_STATE_ADJ_IDLE_DUTY:
-    if (idle_duty == 0) {
-      display_text(off);
-    } else {
-      display_number(DISPLAY_MODE_NUM, idle_duty, true);
+    if (CACHED_VALUE_NEEDS_REDRAW(idle_duty, seg7_force_refresh)) {
+      int idle_duty = CACHED_VALUE_GET(idle_duty);
+      if (idle_duty == 0) {
+        display_text(off);
+      } else {
+        display_number(DISPLAY_MODE_NUM, idle_duty);
+      }
+
+      CACHED_VALUE_ACK(idle_duty);
     }
     break;
 
   case DISPLAY_STATE_ADJ_MAX_DUTY:
-    display_number(DISPLAY_MODE_NUM, max_duty, true);
+    if (CACHED_VALUE_NEEDS_REDRAW(max_duty, seg7_force_refresh)) {
+      display_number(DISPLAY_MODE_NUM, CACHED_VALUE_GET(max_duty));
+
+      CACHED_VALUE_ACK(max_duty);
+    }
     break;
 
   case DISPLAY_STATE_ADJ_POOR:
-    if (poor_mode) {
-      display_text(on);
-    } else {
-      display_text(off);
+    if (CACHED_VALUE_NEEDS_REDRAW(poor_mode, seg7_force_refresh)) {
+      if (CACHED_VALUE_GET(poor_mode)) {
+        display_text(on);
+      } else {
+        display_text(off);
+      }
+
+      CACHED_VALUE_ACK(poor_mode);
     }
     break;
 
   case DISPLAY_STATE_SHOW_FW_VERSION:
-    display_number(DISPLAY_MODE_VERSION, FW_VERSION, true);
+    if (seg7_force_refresh) {
+      display_number(DISPLAY_MODE_VERSION, FW_VERSION);
+    }
     break;
   }
 }
@@ -483,16 +580,13 @@ void seg7_init(void) {
   tick_timer_init(&current_setpoint_change_timer);
 
   trigger = false;
-  previous_setpoint = heat_setpoint;
   current_index = 0;
-  main_period_acc = 0;
-  right_temperature_acc = left_temperature_acc = 0;
-  right_temperature_filtred = 0;
-  left_temperature_filtred = 0;
-  previous_display_state = display_state;
-  previous_temperature_update = number_last_update = systick_get();
-  number_force_update = true;
+
+  seg7_force_refresh = true;
   display_text(nc);
+
+  CACHED_VALUE_SET(blink, systick_get());
+  CACHED_VALUE_FORCE_DIRTY(blink);
 
   // Reconfigure SPI to match refresh rate and 16 bits frame
   DL_SPI_disable(SPI_0_INST);
@@ -523,33 +617,7 @@ void seg7_update(void) {
 }
 
 void seg7_loop(void) {
-  if (new_acquisition) {
-    IIR_FILTER_ADD(SEG7_MAIN_PERIOD_IIR_WINDOW, main_period_acc, main_period);
-
-    if (tip_has_right()) {
-      IIR_FILTER_ADD(SEG7_RIGHT_TEMPERATURE_IIR_WINDOW, right_temperature_acc, right_temperature);
-    } else {
-      IIR_FILTER_ADD(SEG7_RIGHT_TEMPERATURE_IIR_WINDOW, right_temperature_acc, kty_temperature);
-    }
-    if (tip_has_left()) {
-      IIR_FILTER_ADD(SEG7_LEFT_TEMPERATURE_IIR_WINDOW, left_temperature_acc, left_temperature);
-    } else {
-      IIR_FILTER_ADD(SEG7_LEFT_TEMPERATURE_IIR_WINDOW, left_temperature_acc, kty_temperature);
-    }
-
-    // Get filtred value
-    int tmp_right_temperature_filtred = IIR_FILTER_GET(SEG7_RIGHT_TEMPERATURE_IIR_WINDOW, right_temperature_acc);
-    int tmp_left_temperature_filtred = IIR_FILTER_GET(SEG7_LEFT_TEMPERATURE_IIR_WINDOW, left_temperature_acc);
-
-    // Only update above threshold or after some delay: avoid flikering
-    if (ABS(tmp_right_temperature_filtred - right_temperature_filtred) >= SEG7_TEMPERATURE_SLOW_THRESHOLD_DEG ||
-        ABS(tmp_left_temperature_filtred - left_temperature_filtred) >= SEG7_TEMPERATURE_SLOW_THRESHOLD_DEG ||
-        systick_elapsed(previous_temperature_update, SEG7_TEMPERATURE_SLOW_UPDATE_MS)) {
-      right_temperature_filtred = tmp_right_temperature_filtred;
-      left_temperature_filtred = tmp_left_temperature_filtred;
-      previous_temperature_update = systick_get();
-    }
-  }
+  CACHED_VALUE_SET(blink, systick_get() / (SEG7_BLINK_DELAY / 2));
 
   //
   // Start of asynchronous part
@@ -564,12 +632,6 @@ void seg7_loop(void) {
 
   for (;;) {
     pt_wait(&seg7_process_pt, !DL_SPI_isBusy(SPI_0_INST));
-
-    // Detect setpoint changes
-    if (heat_setpoint != previous_setpoint) {
-      previous_setpoint = heat_setpoint;
-      tick_timer_start(&current_setpoint_change_timer, SEG7_SETPOINT_DELAY, true);
-    }
 
     seg7_update();
   }

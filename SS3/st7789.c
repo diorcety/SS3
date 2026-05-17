@@ -3,18 +3,11 @@
 #if defined(USE_ST7789)
 #include "st7789_cpp.h"
 
-#include "acquisition.h"
 #include "board.h"
-#include "cached_value.h"
 #include "configuration.h"
 #include "display.h"
-#include "heat.h"
-#include "iron.h"
-#include "main.h"
 #include "tick.h"
-#include "tip.h"
 #include "util.h"
-#include "zcd.h"
 
 #include <coru.h>
 #include <stdio.h>
@@ -506,22 +499,7 @@ static const unsigned int ST7789_MENU_TOP = ST7789_HEADER_HEIGHT + ST7789_FONT_2
 static const unsigned int ST7789_MENU_ROW_HEIGHT = ST7789_FONT_24_H;
 static const unsigned int ST7789_MENU_VISIBLE = 5;
 
-static const int ST7789_MAIN_PERIOD_IIR_WINDOW = 8;
-static const int ST7789_LEFT_TEMPERATURE_IIR_WINDOW = 32;
-static const int ST7789_RIGHT_TEMPERATURE_IIR_WINDOW = 32;
-
-static const int ST7789_TEMPERATURE_SLOW_UPDATE_MS = 1000;
-static const int ST7789_TEMPERATURE_SLOW_THRESHOLD_DEG = 2;
-
 static const int ST7789_BLINK_DELAY = 1028;
-
-static int main_period_acc;
-static int right_temperature_acc;
-static int right_temperature_filtred;
-static int left_temperature_acc;
-static int left_temperature_filtred;
-
-static uint32_t previous_temperature_update;
 
 /*********************************************************************************************************************
  *                                                                                                                   *
@@ -535,65 +513,9 @@ static inline void yield(void) { coru_yield(); }
 #else
 static inline void yield(void) {}
 #endif
-// #define TEST
-#ifdef TEST
-#define reed_state reed_state_test
-#define tip_type tip_type_test
-#define heat_state heat_state_test
-#define right_duty right_duty_test
-#define left_duty left_duty_test
-#define right_temperature right_temperature_test
-#define left_temperature left_temperature_test
-#define heat_setpoint heat_setpoint_test
-#define heat_state heat_state_test
-#define display_state display_state_test
 
-static DisplayState display_state = DISPLAY_STATE_ADJ_UNIT;
-static TipType tip_type = TIP_TYPE_WMRT;
-static ReedState reed_state = REED_STATE_CLOSED;
-static HeatState heat_state = HEAT_STATE_NORMAL;
-static int right_duty = MAX_DUTY_MAX / 2;
-static int left_duty = MAX_DUTY_MAX / 2;
-static int heat_setpoint = 240;
-static int right_temperature = 180;
-static int left_temperature = 180;
-#endif
-
-static tick_timer_t delay_timer;
-
+CACHED_VALUE_DECL(static, int, blink);
 static bool st7789_force_redraw;
-
-// Direct update: no debounce
-static CACHED_VALUE_DECL(DisplayState, display_state, 0);
-static CACHED_VALUE_DECL(int, blink, 0);
-static CACHED_VALUE_DECL(TipType, tip_type, 0);
-static CACHED_VALUE_DECL(ReedState, reed_state, 0);
-static CACHED_VALUE_DECL(HeatState, heat_state, 0);
-static CACHED_VALUE_DECL(int, heat_setpoint, 0);
-static CACHED_VALUE_DECL(int, setback, 0);
-static CACHED_VALUE_DECL(int, setback_delay, 0);
-static CACHED_VALUE_DECL(int, standby_delay, 0);
-static CACHED_VALUE_DECL(int, temperature_offset, 0);
-static CACHED_VALUE_DECL(int, temperature_unit, 0);
-static CACHED_VALUE_DECL(int, step_size, 0);
-static CACHED_VALUE_DECL(int, kty_value, 0);
-static CACHED_VALUE_DECL(int, reference, 0);
-static CACHED_VALUE_DECL(int, idle_duty, 0);
-static CACHED_VALUE_DECL(int, max_duty, 0);
-static CACHED_VALUE_DECL(int, poor_mode, 0);
-
-// Frequent updates: debounce the input
-static CACHED_VALUE_DECL(int, right_duty, 200);
-static CACHED_VALUE_DECL(int, left_duty, 200);
-static CACHED_VALUE_DECL(int, right_temperature, 200);
-static CACHED_VALUE_DECL(int, left_temperature, 200);
-static CACHED_VALUE_DECL(int, tc_right_temperature, 200);
-static CACHED_VALUE_DECL(int, tc_left_temperature, 200);
-static CACHED_VALUE_DECL(int, main_period, 200);
-
-// Menu cache
-static CACHED_VALUE_DECL(MainMenu, main_menu, 0);
-static CACHED_VALUE_DECL(DiagMenu, diag_menu, 0);
 
 /*********************************************************************************************************************
  *                                                                                                                   *
@@ -766,7 +688,8 @@ static void update_main(void) {
       ack_heat_state = true;
     }
 
-    if (CACHED_VALUE_GET(tip_type) != TIP_TYPE_NC) {
+    TipType tip_type = CACHED_VALUE_GET(tip_type);
+    if (tip_type != TIP_TYPE_NC) {
       int temperature;
       bool draw = false;
 
@@ -1012,32 +935,16 @@ static void update_diag_menu(void) {
 
 static void screen_redraw(void) {
   char buf[32];
-  CACHED_VALUE_SET(display_state, display_state);
-  CACHED_VALUE_SET(main_menu, main_menu);
-  CACHED_VALUE_SET(diag_menu, diag_menu);
 
   st7789_force_redraw = false;
   if (CACHED_VALUE_NEEDS_REDRAW(display_state, false)) {
     st7789_force_redraw = true;
-    CACHED_VALUE_ACK(display_state);
-  }
-
-  if (st7789_force_redraw) {
     st7789_clear();
 
     /* After a full clear every region must repaint regardless of debounce */
-    CACHED_VALUE_FORCE_DIRTY(blink);
-    CACHED_VALUE_FORCE_DIRTY(tip_type);
-    CACHED_VALUE_FORCE_DIRTY(reed_state);
-    CACHED_VALUE_FORCE_DIRTY(heat_state);
-    CACHED_VALUE_FORCE_DIRTY(right_duty);
-    CACHED_VALUE_FORCE_DIRTY(left_duty);
-    CACHED_VALUE_FORCE_DIRTY(right_temperature);
-    CACHED_VALUE_FORCE_DIRTY(left_temperature);
-    CACHED_VALUE_FORCE_DIRTY(heat_setpoint);
+    display_invalidate_cached_values();
 
-    CACHED_VALUE_FORCE_DIRTY(main_menu);
-    CACHED_VALUE_FORCE_DIRTY(diag_menu);
+    CACHED_VALUE_ACK(display_state);
   }
 
   switch (display_state) {
@@ -1240,77 +1147,12 @@ void st7789_coru(void *param) {
   }
 }
 
-static void st7789_init_cached_values(void) {
-  /* SET once to capture the current live value and mark dirty=true */
-  CACHED_VALUE_SET(display_state, display_state);
-  CACHED_VALUE_SET(blink, systick_get());
-  CACHED_VALUE_SET(tip_type, tip_type);
-  CACHED_VALUE_SET(reed_state, reed_state);
-  CACHED_VALUE_SET(heat_state, heat_state);
-  CACHED_VALUE_SET(right_duty, right_duty);
-  CACHED_VALUE_SET(left_duty, left_duty);
-  CACHED_VALUE_SET(right_temperature, right_temperature);
-  CACHED_VALUE_SET(left_temperature, left_temperature);
-  CACHED_VALUE_SET(heat_setpoint, heat_setpoint);
-  CACHED_VALUE_SET(setback, setback);
-  CACHED_VALUE_SET(setback_delay, setback_delay);
-  CACHED_VALUE_SET(standby_delay, standby_delay);
-  CACHED_VALUE_SET(temperature_offset, temperature_offset);
-  CACHED_VALUE_SET(temperature_unit, temperature_unit);
-  CACHED_VALUE_SET(step_size, step_size);
-  CACHED_VALUE_SET(kty_value, kty_value);
-  CACHED_VALUE_SET(reference, reference);
-  CACHED_VALUE_SET(tc_right_temperature, tc_right_temperature);
-  CACHED_VALUE_SET(tc_left_temperature, tc_left_temperature);
-  CACHED_VALUE_SET(idle_duty, idle_duty);
-  CACHED_VALUE_SET(max_duty, max_duty);
-  CACHED_VALUE_SET(poor_mode, poor_mode);
-  CACHED_VALUE_SET(main_period, main_period);
-  CACHED_VALUE_SET(main_menu, main_menu);
-  CACHED_VALUE_SET(diag_menu, diag_menu);
-
-  /* Force dirty so the very first paint always runs */
-  CACHED_VALUE_FORCE_DIRTY(display_state);
-  CACHED_VALUE_FORCE_DIRTY(blink);
-  CACHED_VALUE_FORCE_DIRTY(tip_type);
-  CACHED_VALUE_FORCE_DIRTY(reed_state);
-  CACHED_VALUE_FORCE_DIRTY(heat_state);
-  CACHED_VALUE_FORCE_DIRTY(right_duty);
-  CACHED_VALUE_FORCE_DIRTY(left_duty);
-  CACHED_VALUE_FORCE_DIRTY(right_temperature);
-  CACHED_VALUE_FORCE_DIRTY(left_temperature);
-  CACHED_VALUE_FORCE_DIRTY(heat_setpoint);
-  CACHED_VALUE_FORCE_DIRTY(setback);
-  CACHED_VALUE_FORCE_DIRTY(setback_delay);
-  CACHED_VALUE_FORCE_DIRTY(standby_delay);
-  CACHED_VALUE_FORCE_DIRTY(temperature_offset);
-  CACHED_VALUE_FORCE_DIRTY(temperature_unit);
-  CACHED_VALUE_FORCE_DIRTY(step_size);
-  CACHED_VALUE_FORCE_DIRTY(kty_value);
-  CACHED_VALUE_FORCE_DIRTY(reference);
-  CACHED_VALUE_FORCE_DIRTY(tc_right_temperature);
-  CACHED_VALUE_FORCE_DIRTY(tc_left_temperature);
-  CACHED_VALUE_FORCE_DIRTY(idle_duty);
-  CACHED_VALUE_FORCE_DIRTY(max_duty);
-  CACHED_VALUE_FORCE_DIRTY(poor_mode);
-  CACHED_VALUE_FORCE_DIRTY(main_period);
-  CACHED_VALUE_FORCE_DIRTY(main_menu);
-  CACHED_VALUE_FORCE_DIRTY(diag_menu);
-}
-
 void st7789_init(void) {
   st7789_force_redraw = true;
 
-  main_period_acc = 0;
-  right_temperature_acc = left_temperature_acc = 0;
-  right_temperature_filtred = 0;
-  left_temperature_filtred = 0;
+  CACHED_VALUE_SET(blink, systick_get());
+  CACHED_VALUE_FORCE_DIRTY(blink);
 
-  previous_temperature_update = systick_get();
-
-  st7789_init_cached_values();
-
-  tick_timer_init(&delay_timer);
 #ifndef CORU_DISABLED
   coru_create_inplace(&co, st7789_coru, NULL, co_stack, sizeof(co_stack));
 #else
@@ -1320,58 +1162,6 @@ void st7789_init(void) {
 
 void st7789_loop(void) {
   CACHED_VALUE_SET(blink, systick_get() / (ST7789_BLINK_DELAY / 2));
-
-  if (new_acquisition) {
-    IIR_FILTER_ADD(ST7789_MAIN_PERIOD_IIR_WINDOW, main_period_acc, main_period);
-    int main_period_acc_filtred = IIR_FILTER_GET(ST7789_MAIN_PERIOD_IIR_WINDOW, main_period_acc);
-
-    if (tip_has_right()) {
-      IIR_FILTER_ADD(ST7789_RIGHT_TEMPERATURE_IIR_WINDOW, right_temperature_acc, right_temperature);
-    } else {
-      IIR_FILTER_ADD(ST7789_RIGHT_TEMPERATURE_IIR_WINDOW, right_temperature_acc, kty_temperature);
-    }
-    if (tip_has_left()) {
-      IIR_FILTER_ADD(ST7789_LEFT_TEMPERATURE_IIR_WINDOW, left_temperature_acc, left_temperature);
-    } else {
-      IIR_FILTER_ADD(ST7789_LEFT_TEMPERATURE_IIR_WINDOW, left_temperature_acc, kty_temperature);
-    }
-
-    // Get filtred value
-    int tmp_right_temperature_filtred = IIR_FILTER_GET(ST7789_RIGHT_TEMPERATURE_IIR_WINDOW, right_temperature_acc);
-    int tmp_left_temperature_filtred = IIR_FILTER_GET(ST7789_LEFT_TEMPERATURE_IIR_WINDOW, left_temperature_acc);
-
-    // Only update above threshold or after some delay: avoid flikering
-    if (abs(tmp_right_temperature_filtred - right_temperature_filtred) >= ST7789_TEMPERATURE_SLOW_THRESHOLD_DEG ||
-        abs(tmp_left_temperature_filtred - left_temperature_filtred) >= ST7789_TEMPERATURE_SLOW_THRESHOLD_DEG ||
-        systick_elapsed(previous_temperature_update, ST7789_TEMPERATURE_SLOW_UPDATE_MS)) {
-      right_temperature_filtred = tmp_right_temperature_filtred;
-      left_temperature_filtred = tmp_left_temperature_filtred;
-      previous_temperature_update = systick_get();
-    }
-
-    CACHED_VALUE_SET(tip_type, tip_type);
-    CACHED_VALUE_SET(reed_state, reed_state);
-    CACHED_VALUE_SET(heat_state, heat_state);
-    CACHED_VALUE_SET(right_duty, right_duty);
-    CACHED_VALUE_SET(left_duty, left_duty);
-    CACHED_VALUE_SET(right_temperature, right_temperature_filtred);
-    CACHED_VALUE_SET(left_temperature, left_temperature_filtred);
-    CACHED_VALUE_SET(heat_setpoint, heat_setpoint);
-    CACHED_VALUE_SET(setback, setback);
-    CACHED_VALUE_SET(setback_delay, setback_delay);
-    CACHED_VALUE_SET(standby_delay, standby_delay);
-    CACHED_VALUE_SET(temperature_offset, temperature_offset);
-    CACHED_VALUE_SET(temperature_unit, temperature_unit);
-    CACHED_VALUE_SET(step_size, step_size);
-    CACHED_VALUE_SET(kty_value, (int)kty_value);
-    CACHED_VALUE_SET(reference, reference);
-    CACHED_VALUE_SET(tc_right_temperature, (int)tc_right_temperature);
-    CACHED_VALUE_SET(tc_left_temperature, (int)tc_left_temperature);
-    CACHED_VALUE_SET(idle_duty, idle_duty);
-    CACHED_VALUE_SET(max_duty, max_duty);
-    CACHED_VALUE_SET(poor_mode, poor_mode);
-    CACHED_VALUE_SET(main_period, main_period_acc_filtred);
-  }
 
 #ifndef CORU_DISABLED
   coru_resume(&co);

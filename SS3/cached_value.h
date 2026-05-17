@@ -11,19 +11,35 @@
  *                                                  MACROS                                                           *
  *                                                                                                                   *
  *********************************************************************************************************************/
-
 /**
- * CACHED_VALUE_DECL(TYPE, NAME, DEBOUNCE_MS)
+ * CACHED_VALUE_DECL(STORAGE, TYPE, NAME)
  *
- * Declares and zero-initialises a cached value variable named `cv_NAME`.
- * Place at file scope (static) or inside a struct.
+ * Defines the struct type and declares/defines the variable.
+ *
+ * STORAGE can be:
+ *   extern
+ *   static
+ *   empty
  */
-#define CACHED_VALUE_DECL(TYPE, NAME, DEBOUNCE_MS)                                                                     \
-  struct {                                                                                                             \
+#define CACHED_VALUE_DECL(STORAGE, TYPE, NAME)                                                                         \
+  struct cached_value_##NAME##_s {                                                                                     \
     cached_value_base_t base;                                                                                          \
     TYPE value;                                                                                                        \
-  } cv_##NAME = {                                                                                                      \
-      .base = {.debounce_ms = (DEBOUNCE_MS), .dirty = true},                                                           \
+  };                                                                                                                   \
+  STORAGE struct cached_value_##NAME##_s cv_##NAME
+
+/**
+ * CACHED_VALUE_DEF(TYPE, NAME, DEBOUNCE_MS)
+ *
+ * Defines and initializes a cached value variable named `cv_NAME`.
+ */
+#define CACHED_VALUE_DEF(TYPE, NAME, DEBOUNCE_MS)                                                                      \
+  struct cached_value_##NAME##_s cv_##NAME = {                                                                         \
+      .base =                                                                                                          \
+          {                                                                                                            \
+              .debounce_ms = (DEBOUNCE_MS),                                                                            \
+              .dirty = true,                                                                                           \
+          },                                                                                                           \
       .value = (TYPE){0},                                                                                              \
   }
 
