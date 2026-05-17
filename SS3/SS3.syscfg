@@ -45,14 +45,21 @@ const ProjectConfig = scripting.addModule("/ti/project_config/ProjectConfig");
 const divider6       = system.clockTree["PLL_CLK2X_DIV"];
 divider6.divideValue = 8;
 
+const divider9       = system.clockTree["UDIV"];
+divider9.divideValue = 2;
+
 const gate8  = system.clockTree["MFPCLKGATE"];
 gate8.enable = true;
 
 const multiplier2         = system.clockTree["PLL_QDIV"];
-multiplier2.multiplyValue = 20;
+multiplier2.multiplyValue = 32;
+
+const mux8       = system.clockTree["HSCLKMUX"];
+mux8.inputSelect = "HSCLKMUX_SYSPLL0";
 
 const oscillator2           = system.clockTree["SYSOSC"];
 oscillator2.enableSYSOSCFCL = true;
+oscillator2.frequencySelect = 4;
 
 ADC121.adcMem0avgen                      = true;
 ADC121.hwDenominator                     = "DL_ADC12_HW_AVG_DEN_DIV_BY_2";
@@ -74,6 +81,7 @@ ADC121.sampleTime0                       = "1us";
 ADC121.sampleTime1                       = "1us";
 ADC121.adcMem1chansel                    = "DL_ADC12_INPUT_CHAN_1";
 ADC121.adcMem1_name                      = "TC2V";
+ADC121.sampClkSrc                        = "DL_ADC12_CLOCK_ULPCLK";
 ADC121.adcPin0Config.$name               = "ti_driverlib_gpio_GPIOPinGeneric0";
 ADC121.adcPin0Config.hideOutputInversion = scripting.forceWrite(false);
 ADC121.peripheral.$assign                = "ADC0";
@@ -101,6 +109,7 @@ ADC122.sampleTime0                       = "1us";
 ADC122.sampleTime1                       = "1us";
 ADC122.adcMem1chansel                    = "DL_ADC12_INPUT_CHAN_2";
 ADC122.adcMem1_name                      = "TC1V";
+ADC122.sampClkSrc                        = "DL_ADC12_CLOCK_ULPCLK";
 ADC122.adcPin3Config.hideOutputInversion = scripting.forceWrite(false);
 ADC122.adcPin3Config.$name               = "ti_driverlib_gpio_GPIOPinGeneric14";
 ADC122.adcPin2Config.$name               = "ti_driverlib_gpio_GPIOPinGeneric6";
@@ -232,7 +241,7 @@ SPI1.enableDMAEvent1                = false;
 SPI1.rxFifoThreshold                = "DL_SPI_RX_FIFO_LEVEL_FULL";
 SPI1.txFifoThreshold                = "DL_SPI_TX_FIFO_LEVEL_ONE_FRAME";
 SPI1.enabledDMAEvent2Triggers       = "DL_SPI_DMA_INTERRUPT_TX";
-SPI1.targetBitRate                  = 16000000;
+SPI1.targetBitRate                  = 32000000;
 SPI1.sclkPinConfig.$name            = "ti_driverlib_gpio_GPIOPinGeneric3";
 SPI1.mosiPinConfig.$name            = "ti_driverlib_gpio_GPIOPinGeneric4";
 SPI1.misoPinConfig.$name            = "ti_driverlib_gpio_GPIOPinGeneric5";
@@ -257,7 +266,7 @@ SYSCTL.clockTreeEn           = true;
 SYSTICK.interruptEnable = true;
 SYSTICK.systickEnable   = true;
 SYSTICK.periodEnable    = true;
-SYSTICK.period          = 32000;
+SYSTICK.period          = 64000;
 
 TIMER1.$name             = "MeasurementTimer";
 TIMER1.interrupts        = ["ZERO"];
