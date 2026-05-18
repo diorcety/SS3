@@ -244,7 +244,7 @@ static inline DisplayMode temp_unit(void) {
   return ((TemperatureUnit)temperature_unit == TEMPERATURE_UNIT_C) ? DISPLAY_MODE_C : DISPLAY_MODE_F;
 }
 
-static void display_number(DisplayMode display_mode, int num) {
+static void display_number(DisplayMode display_mode, int num, bool offset) {
   int j; // Digit index
 
   switch (display_mode) {
@@ -257,7 +257,7 @@ static void display_number(DisplayMode display_mode, int num) {
     display[3] = _F;
     display[4] = _DEGREE;
     num = num * 9 / 5;
-    if (display_state != DISPLAY_STATE_ADJ_OFFSET && display_state != DISPLAY_STATE_ADJ_STEP_SIZE)
+    if (offset)
       num = num + 32;
     if (num > 999)
       num = 999;
@@ -351,7 +351,7 @@ static void update_display(void) {
         CACHED_VALUE_ACK(blink);
       }
     } else if (tick_timer_is_running(&current_setpoint_change_timer, true)) {
-      display_number(temp_unit(), heat_setpoint);
+      display_number(temp_unit(), heat_setpoint, true);
     } else {
       TipType tip_type = CACHED_VALUE_GET(tip_type);
       if (tip_type == TIP_TYPE_NC) {
@@ -360,7 +360,7 @@ static void update_display(void) {
         }
       } else if (tip_type != TIP_TYPE_WMRT) {
         if (CACHED_VALUE_NEEDS_REDRAW(right_temperature, seg7_force_refresh)) {
-          display_number(temp_unit(), CACHED_VALUE_GET(right_temperature));
+          display_number(temp_unit(), CACHED_VALUE_GET(right_temperature), true);
 
           CACHED_VALUE_ACK(right_temperature);
         }
@@ -369,7 +369,7 @@ static void update_display(void) {
             CACHED_VALUE_NEEDS_REDRAW(left_temperature, seg7_force_refresh)) {
           int temperature = (CACHED_VALUE_GET(right_temperature) + CACHED_VALUE_GET(left_temperature)) / 2;
 
-          display_number(temp_unit(), temperature);
+          display_number(temp_unit(), temperature, true);
 
           CACHED_VALUE_ACK(right_temperature);
           CACHED_VALUE_ACK(left_temperature);
@@ -397,7 +397,7 @@ static void update_display(void) {
 
   case DISPLAY_STATE_ADJ_SETBACK:
     if (CACHED_VALUE_NEEDS_REDRAW(setback, seg7_force_refresh)) {
-      display_number(temp_unit(), CACHED_VALUE_GET(setback));
+      display_number(temp_unit(), CACHED_VALUE_GET(setback), true);
 
       CACHED_VALUE_ACK(setback);
     }
@@ -408,7 +408,7 @@ static void update_display(void) {
       if (CACHED_VALUE_GET(setback_delay) == SETBACK_DELAY_MIN) {
         display_text(off);
       } else {
-        display_number(DISPLAY_MODE_NUM, CACHED_VALUE_GET(setback_delay));
+        display_number(DISPLAY_MODE_NUM, CACHED_VALUE_GET(setback_delay), true);
       }
 
       CACHED_VALUE_ACK(setback_delay);
@@ -421,7 +421,7 @@ static void update_display(void) {
       if (standby_delay == STANDBY_DELAY_MIN) {
         display_text(off);
       } else {
-        display_number(DISPLAY_MODE_NUM, standby_delay);
+        display_number(DISPLAY_MODE_NUM, standby_delay, true);
       }
 
       CACHED_VALUE_ACK(standby_delay);
@@ -430,7 +430,7 @@ static void update_display(void) {
 
   case DISPLAY_STATE_ADJ_OFFSET:
     if (CACHED_VALUE_NEEDS_REDRAW(temperature_offset, seg7_force_refresh)) {
-      display_number(temp_unit(), CACHED_VALUE_GET(temperature_offset));
+      display_number(temp_unit(), CACHED_VALUE_GET(temperature_offset), false);
 
       CACHED_VALUE_ACK(temperature_offset);
     }
@@ -438,7 +438,7 @@ static void update_display(void) {
 
   case DISPLAY_STATE_ADJ_UNIT:
     if (CACHED_VALUE_NEEDS_REDRAW(temperature_unit, seg7_force_refresh)) {
-      display_number(temp_unit(), 0);
+      display_number(temp_unit(), 0, false);
 
       CACHED_VALUE_ACK(temperature_unit);
     }
@@ -446,7 +446,7 @@ static void update_display(void) {
 
   case DISPLAY_STATE_ADJ_STEP_SIZE:
     if (CACHED_VALUE_NEEDS_REDRAW(step_size, seg7_force_refresh)) {
-      display_number(temp_unit(), CACHED_VALUE_GET(step_size));
+      display_number(temp_unit(), CACHED_VALUE_GET(step_size), false);
 
       CACHED_VALUE_ACK(step_size);
     }
@@ -462,7 +462,7 @@ static void update_display(void) {
 
   case DISPLAY_STATE_SHOW_COLD_COMPENSATION:
     if (CACHED_VALUE_NEEDS_REDRAW(kty_value, seg7_force_refresh)) {
-      display_number(temp_unit(), CACHED_VALUE_GET(kty_value));
+      display_number(temp_unit(), CACHED_VALUE_GET(kty_value), true);
 
       CACHED_VALUE_ACK(kty_value);
     }
@@ -470,7 +470,7 @@ static void update_display(void) {
 
   case DISPLAY_STATE_ADJ_REFERENCE:
     if (CACHED_VALUE_NEEDS_REDRAW(reference, seg7_force_refresh)) {
-      display_number(DISPLAY_MODE_REF, CACHED_VALUE_GET(reference));
+      display_number(DISPLAY_MODE_REF, CACHED_VALUE_GET(reference), true);
 
       CACHED_VALUE_ACK(reference);
     }
@@ -495,7 +495,7 @@ static void update_display(void) {
   case DISPLAY_STATE_SHOW_FREQUENCY:
     if (CACHED_VALUE_NEEDS_REDRAW(main_period, seg7_force_refresh)) {
       int main_frequency = (int)((1000.0f / 2.0f) / (float)CACHED_VALUE_GET(main_period));
-      display_number(DISPLAY_MODE_NUM, main_frequency);
+      display_number(DISPLAY_MODE_NUM, main_frequency, true);
 
       CACHED_VALUE_ACK(main_period);
     }
@@ -503,7 +503,7 @@ static void update_display(void) {
 
   case DISPLAY_STATE_SHOW_TC_1_READING:
     if (CACHED_VALUE_NEEDS_REDRAW(tc_right_temperature, seg7_force_refresh)) {
-      display_number(temp_unit(), CACHED_VALUE_GET(tc_right_temperature));
+      display_number(temp_unit(), CACHED_VALUE_GET(tc_right_temperature), true);
 
       CACHED_VALUE_ACK(tc_right_temperature);
     }
@@ -511,7 +511,7 @@ static void update_display(void) {
 
   case DISPLAY_STATE_SHOW_TC_2_READING:
     if (CACHED_VALUE_NEEDS_REDRAW(tc_left_temperature, seg7_force_refresh)) {
-      display_number(temp_unit(), CACHED_VALUE_GET(tc_left_temperature));
+      display_number(temp_unit(), CACHED_VALUE_GET(tc_left_temperature), true);
 
       CACHED_VALUE_ACK(tc_left_temperature);
     }
@@ -519,7 +519,7 @@ static void update_display(void) {
 
   case DISPLAY_STATE_SHOW_PWM_1_READING:
     if (CACHED_VALUE_NEEDS_REDRAW(right_duty, seg7_force_refresh)) {
-      display_number(DISPLAY_MODE_NUM, CACHED_VALUE_GET(right_duty));
+      display_number(DISPLAY_MODE_NUM, CACHED_VALUE_GET(right_duty), true);
 
       CACHED_VALUE_ACK(right_duty);
     }
@@ -527,7 +527,7 @@ static void update_display(void) {
 
   case DISPLAY_STATE_SHOW_PWM_2_READING:
     if (CACHED_VALUE_NEEDS_REDRAW(left_duty, seg7_force_refresh)) {
-      display_number(DISPLAY_MODE_NUM, CACHED_VALUE_GET(left_duty));
+      display_number(DISPLAY_MODE_NUM, CACHED_VALUE_GET(left_duty), true);
 
       CACHED_VALUE_ACK(left_duty);
     }
@@ -539,7 +539,7 @@ static void update_display(void) {
       if (idle_duty == 0) {
         display_text(off);
       } else {
-        display_number(DISPLAY_MODE_NUM, idle_duty);
+        display_number(DISPLAY_MODE_NUM, idle_duty, true);
       }
 
       CACHED_VALUE_ACK(idle_duty);
@@ -548,7 +548,7 @@ static void update_display(void) {
 
   case DISPLAY_STATE_ADJ_MAX_DUTY:
     if (CACHED_VALUE_NEEDS_REDRAW(max_duty, seg7_force_refresh)) {
-      display_number(DISPLAY_MODE_NUM, CACHED_VALUE_GET(max_duty));
+      display_number(DISPLAY_MODE_NUM, CACHED_VALUE_GET(max_duty), true);
 
       CACHED_VALUE_ACK(max_duty);
     }
@@ -568,7 +568,7 @@ static void update_display(void) {
 
   case DISPLAY_STATE_SHOW_FW_VERSION:
     if (seg7_force_refresh) {
-      display_number(DISPLAY_MODE_VERSION, FW_VERSION);
+      display_number(DISPLAY_MODE_VERSION, FW_VERSION, true);
     }
     break;
   }
