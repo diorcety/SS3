@@ -114,13 +114,6 @@ void iron_loop(void) {
     return;
   }
 
-  // Filter setpoint in order to avoid heat peak
-  if (tip_type != TIP_TYPE_NC) {
-    IIR_FILTER_ADD(HEAT_SETPOINT_WINDOW, heat_setpoint_counter, heat_setpoint);
-  } else {
-    IIR_FILTER_ADD(HEAT_SETPOINT_WINDOW, heat_setpoint_counter, kty_temperature);
-  }
-
   // Fail-safe: With a 3.5 mm barrel jack, an incorrectly inserted plug can short the tip and ring,
   // causing power to appear on the TC pin. In this case, we immediately shut down the power.
   if (current_sw_state != 0) {
@@ -128,6 +121,13 @@ void iron_loop(void) {
       iron_set_output(0);
       heat_error();
     }
+  }
+
+  // Filter setpoint in order to avoid heat peak
+  if (tip_type != TIP_TYPE_NC) {
+    IIR_FILTER_ADD(HEAT_SETPOINT_WINDOW, heat_setpoint_counter, heat_setpoint);
+  } else {
+    IIR_FILTER_ADD(HEAT_SETPOINT_WINDOW, heat_setpoint_counter, kty_temperature);
   }
 
   // Detect tip_type changes
