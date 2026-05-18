@@ -62,6 +62,11 @@ static bool iron_can_heat(void) {
     return false;
   }
 
+  // Do nothing in standby or error state
+  if (heat_state == HEAT_STATE_ERROR || heat_state == HEAT_STATE_STANDBY) {
+    return false;
+  }
+
   // Wait few time (and stabilisation) before heating
   if (tick_timer_is_running(&tip_type_change_timer, true)) {
     return false;
