@@ -17,8 +17,8 @@
 
 static const int TIP_CHANGE_WAIT_DELAY = 1000;
 static const int IRON_HEAT_BASE = 100;
-static const int IRON_DIFF_FACTOR = 2;      // 1° diff == 2%
-static const int IRON_DIFF_FACTOR_BASE = 1; // 1° diff == 2%
+static const int IRON_DIFF_FACTOR = 5;      // 1° diff == 5%
+static const int IRON_DIFF_FACTOR_BASE = 1; // 1° diff == 5%
 static const float TC_MAX_VOLTAGE = 1.0f;   // We NORMALLY should not get any voltage on TC
 static const int HEAT_SETPOINT_WINDOW = 64; // 0 to 240 reached in 392 samples: about 4 seconds on 50HZ
 
@@ -144,33 +144,35 @@ void iron_loop(void) {
     right_heat = iron_should_heat(&right_acc, right_duty);
     left_heat = iron_should_heat(&left_acc, left_duty);
 
-    if (right_heat) {
-      if (tip_type == TIP_TYPE_WMRP || tip_type == TIP_TYPE_WMRT) {
+    if (tip_type == TIP_TYPE_WMRP || tip_type == TIP_TYPE_WMRT) {
+      if (right_heat) {
         switches |= Switches_R12_PIN;
-      } else if (tip_type == TIP_TYPE_WXUP) {
-        switches |= Switches_R24_PIN;
-      } else {
-        right_duty = 0;
-        right_acc = 0;
-        right_heat = false;
       }
+    } else if (tip_type == TIP_TYPE_WXUP) {
+      if (right_heat) {
+        switches |= Switches_R24_PIN;
+      }
+    } else {
+      right_duty = 0;
+      right_acc = 0;
+      right_heat = false;
     }
 
-    if (left_heat) {
-      if (tip_type == TIP_TYPE_WMRT) {
+    if (tip_type == TIP_TYPE_WMRT) {
+      if (left_heat) {
         switches |= Switches_L12_PIN;
-      } else {
-        left_heat = 0;
-        left_acc = 0;
-        left_heat = false;
       }
+    } else {
+      left_duty = 0;
+      left_acc = 0;
+      left_heat = false;
     }
   } else {
     right_acc = 0;
-    left_acc = 0;
+    right_duty = 0;
     right_heat = false;
 
-    right_duty = 0;
+    left_acc = 0;
     left_duty = 0;
     left_heat = false;
   }
