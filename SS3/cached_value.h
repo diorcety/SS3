@@ -135,8 +135,10 @@ static inline bool _cached_value_needs_redraw(const cached_value_base_t *b, bool
 static inline void _cached_value_ack(cached_value_base_t *b) { b->dirty = false; }
 
 static inline void _cached_value_set(cached_value_base_t *b) {
-  b->dirty = true;
-  b->last_set_tick = systick_get();
+  if (b->dirty == false) {
+    b->dirty = true;
+    b->last_set_tick = systick_get();
+  }
 }
 
 #endif
