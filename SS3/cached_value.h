@@ -82,6 +82,18 @@
 #define CACHED_VALUE_GET(NAME) (cv_##NAME.value)
 
 /**
+ * CACHED_VALUE_GET(NAME)
+ *
+ * Read the current stored value and clear the dirty flag.
+ */
+#define CACHED_VALUE_GET_ACK(NAME)                                                                                     \
+  ({                                                                                                                   \
+    __typeof__(cv_##NAME.value) _v = cv_##NAME.value;                                                                  \
+    CACHED_VALUE_ACK(NAME);                                                                                            \
+    _v;                                                                                                                \
+  })
+
+/**
  * CACHED_VALUE_FORCE_DIRTY(NAME)
  *
  * Mark as dirty without changing the value (e.g. after a full screen clear).

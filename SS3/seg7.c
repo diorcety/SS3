@@ -304,13 +304,13 @@ static void display_number(DisplayMode display_mode, int num, bool offset) {
   }
 }
 
-static void update_main_menu_display(void) {
+static void update_main_menu_display(MainMenu main_menu) {
   if (main_menu < ARRAY_SIZE(main_menu_txt)) {
     display_text(main_menu_txt[main_menu]);
   }
 }
 
-static void update_menu_diag_display(void) {
+static void update_menu_diag_display(DiagMenu diag_menu) {
   if (diag_menu < ARRAY_SIZE(diag_menu_txt)) {
     display_text(diag_menu_txt[diag_menu]);
   }
@@ -321,14 +321,15 @@ static void update_display(void) {
   if (CACHED_VALUE_NEEDS_REDRAW(display_state, false)) {
     seg7_force_refresh = true;
     display_invalidate_cached_values();
-    CACHED_VALUE_ACK(display_state);
   }
+
+  DisplayState display_state = CACHED_VALUE_GET_ACK(display_state);
 
   // Detect setpoint changes
   if (CACHED_VALUE_NEEDS_REDRAW(heat_setpoint, false)) {
     tick_timer_start(&current_setpoint_change_timer, SEG7_SETPOINT_DELAY, true);
-    CACHED_VALUE_ACK(heat_setpoint);
   }
+  int heat_setpoint = CACHED_VALUE_GET_ACK(heat_setpoint);
 
   switch (display_state) {
   case DISPLAY_STATE_MAIN:
@@ -339,7 +340,7 @@ static void update_display(void) {
     } else if (heat_state == HEAT_STATE_ERROR) {
       if (CACHED_VALUE_NEEDS_REDRAW(blink, seg7_force_refresh)) {
         // Blink the error message
-        if (CACHED_VALUE_GET(blink) % 2 == 0) {
+        if (CACHED_VALUE_GET_ACK(blink) % 2 == 0) {
           display_text(err);
         } else {
           display[0] = _SPACE;
@@ -347,8 +348,6 @@ static void update_display(void) {
           display[2] = _SPACE;
           display[3] = _SPACE;
         }
-
-        CACHED_VALUE_ACK(blink);
       }
     } else if (tick_timer_is_running(&current_setpoint_change_timer, true)) {
       display_number(temp_unit(), heat_setpoint, true);
@@ -360,19 +359,14 @@ static void update_display(void) {
         }
       } else if (tip_type != TIP_TYPE_WMRT) {
         if (CACHED_VALUE_NEEDS_REDRAW(right_temperature, seg7_force_refresh)) {
-          display_number(temp_unit(), CACHED_VALUE_GET(right_temperature), true);
-
-          CACHED_VALUE_ACK(right_temperature);
+          display_number(temp_unit(), CACHED_VALUE_GET_ACK(right_temperature), true);
         }
       } else {
         if (CACHED_VALUE_NEEDS_REDRAW(right_temperature, seg7_force_refresh) ||
             CACHED_VALUE_NEEDS_REDRAW(left_temperature, seg7_force_refresh)) {
-          int temperature = (CACHED_VALUE_GET(right_temperature) + CACHED_VALUE_GET(left_temperature)) / 2;
+          int temperature = (CACHED_VALUE_GET_ACK(right_temperature) + CACHED_VALUE_GET_ACK(left_temperature)) / 2;
 
           display_number(temp_unit(), temperature, true);
-
-          CACHED_VALUE_ACK(right_temperature);
-          CACHED_VALUE_ACK(left_temperature);
         }
       }
     }
@@ -389,50 +383,41 @@ static void update_display(void) {
 
   case DISPLAY_STATE_MAIN_MENU:
     if (CACHED_VALUE_NEEDS_REDRAW(main_menu, seg7_force_refresh)) {
-      update_main_menu_display();
-
-      CACHED_VALUE_ACK(main_menu);
+      update_main_menu_display(CACHED_VALUE_GET_ACK(main_menu));
     }
     break;
 
   case DISPLAY_STATE_ADJ_SETBACK:
     if (CACHED_VALUE_NEEDS_REDRAW(setback, seg7_force_refresh)) {
-      display_number(temp_unit(), CACHED_VALUE_GET(setback), true);
-
-      CACHED_VALUE_ACK(setback);
+      display_number(temp_unit(), CACHED_VALUE_GET_ACK(setback), true);
     }
     break;
 
   case DISPLAY_STATE_ADJ_SETBACK_DELAY:
     if (CACHED_VALUE_NEEDS_REDRAW(setback_delay, seg7_force_refresh)) {
-      if (CACHED_VALUE_GET(setback_delay) == SETBACK_DELAY_MIN) {
+      int setback_delay = CACHED_VALUE_GET_ACK(setback_delay);
+      if (setback_delay == SETBACK_DELAY_MIN) {
         display_text(off);
       } else {
-        display_number(DISPLAY_MODE_NUM, CACHED_VALUE_GET(setback_delay), true);
+        display_number(DISPLAY_MODE_NUM, setback_delay, true);
       }
-
-      CACHED_VALUE_ACK(setback_delay);
     }
     break;
 
   case DISPLAY_STATE_ADJ_STANDBY_DELAY:
     if (CACHED_VALUE_NEEDS_REDRAW(standby_delay, seg7_force_refresh)) {
-      int standby_delay = CACHED_VALUE_GET(standby_delay);
+      int standby_delay = CACHED_VALUE_GET_ACK(standby_delay);
       if (standby_delay == STANDBY_DELAY_MIN) {
         display_text(off);
       } else {
         display_number(DISPLAY_MODE_NUM, standby_delay, true);
       }
-
-      CACHED_VALUE_ACK(standby_delay);
     }
     break;
 
   case DISPLAY_STATE_ADJ_OFFSET:
     if (CACHED_VALUE_NEEDS_REDRAW(temperature_offset, seg7_force_refresh)) {
-      display_number(temp_unit(), CACHED_VALUE_GET(temperature_offset), false);
-
-      CACHED_VALUE_ACK(temperature_offset);
+      display_number(temp_unit(), CACHED_VALUE_GET_ACK(temperature_offset), false);
     }
     break;
 
@@ -446,123 +431,96 @@ static void update_display(void) {
 
   case DISPLAY_STATE_ADJ_STEP_SIZE:
     if (CACHED_VALUE_NEEDS_REDRAW(step_size, seg7_force_refresh)) {
-      display_number(temp_unit(), CACHED_VALUE_GET(step_size), false);
-
-      CACHED_VALUE_ACK(step_size);
+      display_number(temp_unit(), CACHED_VALUE_GET_ACK(step_size), false);
     }
     break;
 
   case DISPLAY_STATE_DIAG_MENU:
     if (CACHED_VALUE_NEEDS_REDRAW(diag_menu, seg7_force_refresh)) {
-      update_menu_diag_display();
-
-      CACHED_VALUE_ACK(diag_menu);
+      update_menu_diag_display(CACHED_VALUE_GET_ACK(diag_menu));
     }
     break;
 
   case DISPLAY_STATE_SHOW_COLD_COMPENSATION:
     if (CACHED_VALUE_NEEDS_REDRAW(kty_value, seg7_force_refresh)) {
-      display_number(temp_unit(), CACHED_VALUE_GET(kty_value), true);
-
-      CACHED_VALUE_ACK(kty_value);
+      display_number(temp_unit(), CACHED_VALUE_GET_ACK(kty_value), true);
     }
     break;
 
   case DISPLAY_STATE_ADJ_REFERENCE:
     if (CACHED_VALUE_NEEDS_REDRAW(reference, seg7_force_refresh)) {
-      display_number(DISPLAY_MODE_REF, CACHED_VALUE_GET(reference), true);
-
-      CACHED_VALUE_ACK(reference);
+      display_number(DISPLAY_MODE_REF, CACHED_VALUE_GET_ACK(reference), true);
     }
     break;
 
   case DISPLAY_STATE_SHOW_TIP_TYPE:
     if (CACHED_VALUE_NEEDS_REDRAW(tip_type, seg7_force_refresh)) {
-      display_text(tip_txt[CACHED_VALUE_GET(tip_type)]);
-
-      CACHED_VALUE_ACK(tip_type);
+      display_text(tip_txt[CACHED_VALUE_GET_ACK(tip_type)]);
     }
     break;
 
   case DISPLAY_STATE_SHOW_REED_STATE:
     if (CACHED_VALUE_NEEDS_REDRAW(reed_state, seg7_force_refresh)) {
-      display_text(reed_txt[CACHED_VALUE_GET(reed_state)]);
-
-      CACHED_VALUE_ACK(reed_state);
+      display_text(reed_txt[CACHED_VALUE_GET_ACK(reed_state)]);
     }
     break;
 
   case DISPLAY_STATE_SHOW_FREQUENCY:
     if (CACHED_VALUE_NEEDS_REDRAW(main_period, seg7_force_refresh)) {
-      int main_frequency = (int)((1000.0f / 2.0f) / (float)CACHED_VALUE_GET(main_period));
+      int main_period = CACHED_VALUE_GET_ACK(main_period);
+      int main_frequency = (int)((1000.0f / 2.0f) / (float)main_period);
       display_number(DISPLAY_MODE_NUM, main_frequency, true);
-
-      CACHED_VALUE_ACK(main_period);
     }
     break;
 
   case DISPLAY_STATE_SHOW_TC_1_READING:
     if (CACHED_VALUE_NEEDS_REDRAW(tc_right_temperature, seg7_force_refresh)) {
-      display_number(temp_unit(), CACHED_VALUE_GET(tc_right_temperature), true);
-
-      CACHED_VALUE_ACK(tc_right_temperature);
+      display_number(temp_unit(), CACHED_VALUE_GET_ACK(tc_right_temperature), true);
     }
     break;
 
   case DISPLAY_STATE_SHOW_TC_2_READING:
     if (CACHED_VALUE_NEEDS_REDRAW(tc_left_temperature, seg7_force_refresh)) {
-      display_number(temp_unit(), CACHED_VALUE_GET(tc_left_temperature), true);
-
-      CACHED_VALUE_ACK(tc_left_temperature);
+      display_number(temp_unit(), CACHED_VALUE_GET_ACK(tc_left_temperature), true);
     }
     break;
 
   case DISPLAY_STATE_SHOW_PWM_1_READING:
     if (CACHED_VALUE_NEEDS_REDRAW(right_duty, seg7_force_refresh)) {
-      display_number(DISPLAY_MODE_NUM, CACHED_VALUE_GET(right_duty), true);
-
-      CACHED_VALUE_ACK(right_duty);
+      display_number(DISPLAY_MODE_NUM, CACHED_VALUE_GET_ACK(right_duty), true);
     }
     break;
 
   case DISPLAY_STATE_SHOW_PWM_2_READING:
     if (CACHED_VALUE_NEEDS_REDRAW(left_duty, seg7_force_refresh)) {
-      display_number(DISPLAY_MODE_NUM, CACHED_VALUE_GET(left_duty), true);
-
-      CACHED_VALUE_ACK(left_duty);
+      display_number(DISPLAY_MODE_NUM, CACHED_VALUE_GET_ACK(left_duty), true);
     }
     break;
 
   case DISPLAY_STATE_ADJ_IDLE_DUTY:
     if (CACHED_VALUE_NEEDS_REDRAW(idle_duty, seg7_force_refresh)) {
-      int idle_duty = CACHED_VALUE_GET(idle_duty);
+      int idle_duty = CACHED_VALUE_GET_ACK(idle_duty);
       if (idle_duty == 0) {
         display_text(off);
       } else {
         display_number(DISPLAY_MODE_NUM, idle_duty, true);
       }
-
-      CACHED_VALUE_ACK(idle_duty);
     }
     break;
 
   case DISPLAY_STATE_ADJ_MAX_DUTY:
     if (CACHED_VALUE_NEEDS_REDRAW(max_duty, seg7_force_refresh)) {
-      display_number(DISPLAY_MODE_NUM, CACHED_VALUE_GET(max_duty), true);
-
-      CACHED_VALUE_ACK(max_duty);
+      display_number(DISPLAY_MODE_NUM, CACHED_VALUE_GET_ACK(max_duty), true);
     }
     break;
 
   case DISPLAY_STATE_ADJ_POOR:
     if (CACHED_VALUE_NEEDS_REDRAW(poor_mode, seg7_force_refresh)) {
-      if (CACHED_VALUE_GET(poor_mode)) {
+      if (CACHED_VALUE_GET_ACK(poor_mode)) {
         display_text(on);
       } else {
         display_text(off);
       }
-
-      CACHED_VALUE_ACK(poor_mode);
     }
     break;
 

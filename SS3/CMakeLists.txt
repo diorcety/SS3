@@ -286,6 +286,7 @@ target_compile_options(project_compile_options INTERFACE
     -Wno-c2y-extensions
     -Wno-empty-translation-unit
     -Wno-gnu-zero-variadic-macro-arguments
+    -Wno-gnu-statement-expression-from-macro-expansion
 
     $<$<COMPILE_LANGUAGE:CXX>:-fno-exceptions>
     $<$<COMPILE_LANGUAGE:CXX>:-fno-rtti>

@@ -416,7 +416,7 @@ static char const *const header_txt[] = {
 
 static char const *const tip_txt[] = {
     [TIP_TYPE_NC] = "N.C",
-    [TIP_TYPE_WXUP] = "WXRP",
+    [TIP_TYPE_WXUP] = "WXUP",
     [TIP_TYPE_WMRP] = "WMRP",
     [TIP_TYPE_WMRT] = "WMRT",
 };
@@ -560,7 +560,7 @@ TESTABLE int snprint_int(char *buf, size_t size, int value, char pad, int width)
   return would_write;
 }
 
-TESTABLE int print_temperature(char *s, size_t n, int temperature, bool unit, bool offset) {
+TESTABLE int print_temperature(char *s, size_t n, int temperature, bool unit, bool offset, char padding_char) {
   if ((TemperatureUnit)temperature_unit == TEMPERATURE_UNIT_F) {
     temperature = temperature * 9 / 5;
     if (offset) {
@@ -568,7 +568,7 @@ TESTABLE int print_temperature(char *s, size_t n, int temperature, bool unit, bo
     }
   }
 
-  int written = snprint_int(s, n, temperature, '0', 3);
+  int written = snprint_int(s, n, temperature, padding_char, 3);
 
   if (unit) {
     const char *suffix = (TemperatureUnit)temperature_unit == TEMPERATURE_UNIT_C ? CELSIUS_SUFFIX : FAHRENHEIT_SUFFIX;
@@ -627,9 +627,10 @@ static void st7789_duty_signal(uint16_t x, uint16_t y, int duty) {
 }
 
 static void update_main(void) {
-  bool ack_heat_state = false;
-  bool ack_tip_type = false;
-  bool ack_blink = false;
+  bool update_heat_state = CACHED_VALUE_NEEDS_REDRAW(heat_state, st7789_force_redraw);
+  HeatState heat_state = CACHED_VALUE_GET_ACK(heat_state);
+  bool update_tip_type = CACHED_VALUE_NEEDS_REDRAW(tip_type, st7789_force_redraw);
+  TipType tip_type = CACHED_VALUE_GET_ACK(tip_type);
 
   /* --- separator line: only on full redraw ----------------------------- */
   if (st7789_force_redraw) {
@@ -640,89 +641,66 @@ static void update_main(void) {
                      RGB565_WHITE);
   }
 
-  if (CACHED_VALUE_GET(heat_state) == HEAT_STATE_STANDBY) {
-    if (CACHED_VALUE_NEEDS_REDRAW(heat_state, st7789_force_redraw)) {
+  st7889_set_text_size(2);
+  if (heat_state == HEAT_STATE_STANDBY) {
+    if (update_heat_state) {
       st7889_set_font(inconsolata60);
-      st7889_set_text_size(2);
       st7889_set_cursor(0, ST7789_MAIN_BASELINE);
       st7889_set_text_color(RGB565_WHITE, ST7789_BG_COLOR);
       st7889_print(CHAR_SPACE CHAR_STANDBY CHAR_SPACE);
-      st7889_set_text_size(1);
-
-      ack_heat_state = true;
     }
-  } else if (CACHED_VALUE_GET(heat_state) == HEAT_STATE_ERROR) {
+  } else if (heat_state == HEAT_STATE_ERROR) {
     bool redraw = false;
-    if (CACHED_VALUE_NEEDS_REDRAW(heat_state, st7789_force_redraw)) {
+    if (update_heat_state) {
       redraw = true;
-      ack_heat_state = true;
     }
     if (CACHED_VALUE_NEEDS_REDRAW(blink, st7789_force_redraw)) {
       redraw = true;
-      ack_blink = true;
     }
     if (redraw) {
       st7889_set_font(inconsolata60);
-      st7889_set_text_size(2);
       st7889_set_cursor(0, ST7789_MAIN_BASELINE);
       st7889_set_text_color(RGB565_RED, ST7789_BG_COLOR);
-      st7889_print((CACHED_VALUE_GET(blink) % 2 == 0) ? (CHAR_SPACE CHAR_ERR CHAR_SPACE)
-                                                      : (CHAR_ERR CHAR_SPACE CHAR_ERR));
-      st7889_set_text_size(1);
+      st7889_print((CACHED_VALUE_GET_ACK(blink) % 2 == 0) ? (CHAR_SPACE CHAR_ERR CHAR_SPACE)
+                                                          : (CHAR_ERR CHAR_SPACE CHAR_ERR));
     }
   } else {
-    if (CACHED_VALUE_NEEDS_REDRAW(heat_state, st7789_force_redraw)) {
-      if (CACHED_VALUE_NEEDS_REDRAW(tip_type, st7789_force_redraw)) {
-        if (CACHED_VALUE_GET(tip_type) == TIP_TYPE_NC) {
-          st7889_set_font(inconsolata60);
-          st7889_set_text_size(2);
-          st7889_set_cursor(0, ST7789_MAIN_BASELINE);
-          st7889_set_text_color(RGB565_WHITE, ST7789_BG_COLOR);
-          st7889_print("---");
-          st7889_set_text_size(1);
-        }
-
-        ack_tip_type = true;
+    if (tip_type == TIP_TYPE_NC) {
+      if (update_heat_state || update_tip_type) {
+        st7889_set_font(inconsolata60);
+        st7889_set_cursor(0, ST7789_MAIN_BASELINE);
+        st7889_set_text_color(RGB565_WHITE, ST7789_BG_COLOR);
+        st7889_print("---");
       }
-
-      ack_heat_state = true;
-    }
-
-    TipType tip_type = CACHED_VALUE_GET(tip_type);
-    if (tip_type != TIP_TYPE_NC) {
+    } else {
       int temperature;
       bool draw = false;
 
       if (tip_type != TIP_TYPE_WMRT) {
-        if (CACHED_VALUE_NEEDS_REDRAW(right_temperature, st7789_force_redraw)) {
-          temperature = CACHED_VALUE_GET(right_temperature);
-
-          CACHED_VALUE_ACK(right_temperature);
+        if (CACHED_VALUE_NEEDS_REDRAW(right_temperature, st7789_force_redraw) || update_heat_state || update_tip_type) {
+          temperature = CACHED_VALUE_GET_ACK(right_temperature);
           draw = true;
         }
       } else {
         if (CACHED_VALUE_NEEDS_REDRAW(right_temperature, st7789_force_redraw) ||
-            CACHED_VALUE_NEEDS_REDRAW(left_temperature, st7789_force_redraw)) {
-          temperature = (CACHED_VALUE_GET(right_temperature) + CACHED_VALUE_GET(left_temperature)) / 2;
-
-          CACHED_VALUE_ACK(right_temperature);
-          CACHED_VALUE_ACK(left_temperature);
+            CACHED_VALUE_NEEDS_REDRAW(left_temperature, st7789_force_redraw) || update_heat_state || update_tip_type) {
+          temperature = (CACHED_VALUE_GET_ACK(right_temperature) + CACHED_VALUE_GET_ACK(left_temperature)) / 2;
           draw = true;
         }
       }
 
       if (draw) {
         st7889_set_font(inconsolata60);
-        st7889_set_text_size(2);
         st7889_set_cursor(0, ST7789_MAIN_BASELINE);
         st7889_set_text_color(st7789_temperature_color(temperature), ST7789_BG_COLOR);
         char buffer[4];
-        print_temperature(buffer, sizeof(buffer), temperature, false, true);
+        print_temperature(buffer, sizeof(buffer), temperature, false, true, '0');
         st7889_print(buffer);
-        st7889_set_text_size(1);
       }
     }
   }
+
+  st7889_set_text_size(1);
 
   /* --- setpoint -------------------------------------------------------- */
   if (CACHED_VALUE_NEEDS_REDRAW(heat_setpoint, st7789_force_redraw)) {
@@ -731,10 +709,8 @@ static void update_main(void) {
     st7889_set_text_color(RGB565_WHITE, ST7789_BG_COLOR);
     char sp_buf[8];
     sp_buf[0] = CHAR_TARGET[0];
-    print_temperature(&sp_buf[1], sizeof(sp_buf) - 1, CACHED_VALUE_GET(heat_setpoint), true, true);
+    print_temperature(&sp_buf[1], sizeof(sp_buf) - 1, CACHED_VALUE_GET_ACK(heat_setpoint), true, true, ' ');
     st7889_print(sp_buf);
-
-    CACHED_VALUE_ACK(heat_setpoint);
   }
 
   /* --- reed state icon ------------------------------------------------- */
@@ -742,54 +718,35 @@ static void update_main(void) {
     st7889_set_font(inconsolata48);
     st7889_set_cursor(ST7789_RIGHT_COLUMN + ST7789_RIGHT_COLUMN_X * 0, ST7789_RIGHT_COLUMN_BOTTOM);
     st7889_set_text_color(RGB565_WHITE, ST7789_BG_COLOR);
-    st7889_print(REED_ICONS[CACHED_VALUE_GET(reed_state)]);
-
-    CACHED_VALUE_ACK(reed_state);
+    st7889_print(REED_ICONS[CACHED_VALUE_GET_ACK(reed_state)]);
   }
 
   /* --- setback icon ---------------------------------------------------- */
-  if (CACHED_VALUE_NEEDS_REDRAW(heat_state, st7789_force_redraw)) {
+  if (update_heat_state) {
     st7889_set_font(inconsolata48);
     st7889_set_cursor(ST7789_RIGHT_COLUMN + ST7789_RIGHT_COLUMN_X * 1, ST7789_RIGHT_COLUMN_BOTTOM);
     st7889_set_text_color(RGB565_WHITE, ST7789_BG_COLOR);
-    st7889_print(SETBACK_ICONS[CACHED_VALUE_GET(heat_state)]);
-
-    CACHED_VALUE_ACK(heat_state);
+    st7889_print(SETBACK_ICONS[heat_state]);
   }
 
   /* --- duty signal bar ------------------------------------------------- */
   if (CACHED_VALUE_NEEDS_REDRAW(right_duty, st7789_force_redraw) ||
       CACHED_VALUE_NEEDS_REDRAW(left_duty, st7789_force_redraw)) {
-    int duty = MAX(CACHED_VALUE_GET(right_duty), CACHED_VALUE_GET(left_duty)) * 100 / MAX_DUTY_MAX;
+    int duty = MAX(CACHED_VALUE_GET_ACK(right_duty), CACHED_VALUE_GET_ACK(left_duty)) * 100 / MAX_DUTY_MAX;
     st7789_duty_signal(ST7789_RIGHT_COLUMN, ST7789_DUTY_BOTTOM, duty);
-
-    CACHED_VALUE_ACK(right_duty);
-    CACHED_VALUE_ACK(left_duty);
   }
 
   /* --- tip type icon + voltage ----------------------------------------- */
-  if (CACHED_VALUE_NEEDS_REDRAW(tip_type, st7789_force_redraw)) {
+  if (update_tip_type) {
     st7889_set_font(inconsolata48);
     st7889_set_cursor(ST7789_RIGHT_COLUMN + ST7789_RIGHT_COLUMN_X * 2, ST7789_RIGHT_COLUMN_BOTTOM);
     st7889_set_text_color(RGB565_WHITE, ST7789_BG_COLOR);
-    st7889_print(TIP_ICONS[CACHED_VALUE_GET(tip_type)]);
+    st7889_print(TIP_ICONS[tip_type]);
 
     st7889_set_font(inconsolata24);
     st7889_set_cursor(ST7789_SETPOINT_LEFT, ST7789_VOLTAGE_BOTTOM);
     st7889_set_text_color(ST7789_VOLTAGE_COLOR, ST7789_BG_COLOR);
-    st7889_print(TIP_VOLTAGES[CACHED_VALUE_GET(tip_type)]);
-
-    ack_tip_type = true;
-  }
-
-  if (ack_heat_state) {
-    CACHED_VALUE_ACK(heat_state);
-  }
-  if (ack_tip_type) {
-    CACHED_VALUE_ACK(tip_type);
-  }
-  if (ack_blink) {
-    CACHED_VALUE_ACK(blink);
+    st7889_print(TIP_VOLTAGES[tip_type]);
   }
 }
 
@@ -827,7 +784,7 @@ static void update_view(const char *txt) {
 
   st7889_set_font(inconsolata24);
   st7889_set_cursor(0, ST7789_VIEW_BASELINE);
-  st7889_set_text_color(RGB565_WHITE, RGB565_WHITE);
+  st7889_set_text_color(RGB565_WHITE, RGB565_BLACK);
   st7889_print(line);
 }
 
@@ -919,18 +876,14 @@ static void update_main_menu(void) {
   if (!CACHED_VALUE_NEEDS_REDRAW(main_menu, st7789_force_redraw))
     return;
 
-  update_menu(main_menu_txt, ARRAY_SIZE(main_menu_txt), CACHED_VALUE_GET(main_menu));
-
-  CACHED_VALUE_ACK(main_menu);
+  update_menu(main_menu_txt, ARRAY_SIZE(main_menu_txt), CACHED_VALUE_GET_ACK(main_menu));
 }
 
 static void update_diag_menu(void) {
   if (!CACHED_VALUE_NEEDS_REDRAW(diag_menu, st7789_force_redraw))
     return;
 
-  update_menu(diag_menu_txt, ARRAY_SIZE(diag_menu_txt), CACHED_VALUE_GET(diag_menu));
-
-  CACHED_VALUE_ACK(diag_menu);
+  update_menu(diag_menu_txt, ARRAY_SIZE(diag_menu_txt), CACHED_VALUE_GET_ACK(diag_menu));
 }
 
 static void screen_redraw(void) {
@@ -943,9 +896,9 @@ static void screen_redraw(void) {
 
     /* After a full clear every region must repaint regardless of debounce */
     display_invalidate_cached_values();
-
-    CACHED_VALUE_ACK(display_state);
   }
+
+  DisplayState display_state = CACHED_VALUE_GET_ACK(display_state);
 
   switch (display_state) {
   case DISPLAY_STATE_MAIN:
@@ -959,155 +912,124 @@ static void screen_redraw(void) {
     break;
   case DISPLAY_STATE_ADJ_SETBACK:
     if (CACHED_VALUE_NEEDS_REDRAW(setback, st7789_force_redraw)) {
-      snprint_int(buf, sizeof(buf), CACHED_VALUE_GET(setback), CHAR_SPACE[0], 0);
+      snprint_int(buf, sizeof(buf), CACHED_VALUE_GET_ACK(setback), CHAR_SPACE[0], 0);
       update_view(buf);
-
-      CACHED_VALUE_ACK(setback);
     }
     break;
   case DISPLAY_STATE_ADJ_SETBACK_DELAY:
     if (CACHED_VALUE_NEEDS_REDRAW(setback_delay, st7789_force_redraw)) {
-      if (CACHED_VALUE_GET(setback_delay) == SETBACK_DELAY_MIN)
+      int setback_delay = CACHED_VALUE_GET_ACK(setback_delay);
+      if (setback_delay == SETBACK_DELAY_MIN)
         update_view(OFF_TXT);
       else {
-        snprint_int(buf, sizeof(buf), CACHED_VALUE_GET(setback_delay), CHAR_SPACE[0], 0);
+        snprint_int(buf, sizeof(buf), setback_delay, CHAR_SPACE[0], 0);
         update_view(buf);
       }
-
-      CACHED_VALUE_ACK(setback_delay);
     }
     break;
   case DISPLAY_STATE_ADJ_STANDBY_DELAY:
     if (CACHED_VALUE_NEEDS_REDRAW(standby_delay, st7789_force_redraw)) {
-      if (CACHED_VALUE_GET(standby_delay) == STANDBY_DELAY_MIN)
+      int standby_delay = CACHED_VALUE_GET_ACK(standby_delay);
+      if (standby_delay == STANDBY_DELAY_MIN)
         update_view(OFF_TXT);
       else {
-        snprint_int(buf, sizeof(buf), CACHED_VALUE_GET(standby_delay), CHAR_SPACE[0], 0);
+        snprint_int(buf, sizeof(buf), standby_delay, CHAR_SPACE[0], 0);
         update_view(buf);
       }
-
-      CACHED_VALUE_ACK(standby_delay);
     }
     break;
   case DISPLAY_STATE_ADJ_OFFSET:
     if (CACHED_VALUE_NEEDS_REDRAW(temperature_offset, st7789_force_redraw)) {
-      print_temperature(buf, sizeof(buf), CACHED_VALUE_GET(temperature_offset), true, false);
+      print_temperature(buf, sizeof(buf), CACHED_VALUE_GET_ACK(temperature_offset), true, false, ' ');
       update_view(buf);
-
-      CACHED_VALUE_ACK(temperature_offset);
     }
     break;
   case DISPLAY_STATE_ADJ_UNIT:
     if (CACHED_VALUE_NEEDS_REDRAW(temperature_unit, st7789_force_redraw)) {
-      update_view((CACHED_VALUE_GET(temperature_unit) == TEMPERATURE_UNIT_C) ? CELSIUS_SUFFIX : FAHRENHEIT_SUFFIX);
-
-      CACHED_VALUE_ACK(temperature_unit);
+      update_view((CACHED_VALUE_GET_ACK(temperature_unit) == TEMPERATURE_UNIT_C) ? CELSIUS_SUFFIX : FAHRENHEIT_SUFFIX);
     }
     break;
   case DISPLAY_STATE_ADJ_STEP_SIZE:
     if (CACHED_VALUE_NEEDS_REDRAW(step_size, st7789_force_redraw)) {
-      print_temperature(buf, sizeof(buf), CACHED_VALUE_GET(step_size), true, false);
+      print_temperature(buf, sizeof(buf), CACHED_VALUE_GET_ACK(step_size), true, false, ' ');
       update_view(buf);
-
-      CACHED_VALUE_ACK(step_size);
     }
     break;
   case DISPLAY_STATE_SHOW_COLD_COMPENSATION:
     if (CACHED_VALUE_NEEDS_REDRAW(kty_value, st7789_force_redraw)) {
-      snprint_int(buf, sizeof(buf), CACHED_VALUE_GET(kty_value), CHAR_SPACE[0], 0);
+      snprint_int(buf, sizeof(buf), CACHED_VALUE_GET_ACK(kty_value), CHAR_SPACE[0], 0);
       update_view(buf);
-
-      CACHED_VALUE_ACK(kty_value);
     }
     break;
   case DISPLAY_STATE_ADJ_REFERENCE:
     if (CACHED_VALUE_NEEDS_REDRAW(reference, st7789_force_redraw)) {
-      snprint_int(buf, sizeof(buf), CACHED_VALUE_GET(reference), CHAR_SPACE[0], 0);
+      snprint_int(buf, sizeof(buf), CACHED_VALUE_GET_ACK(reference), CHAR_SPACE[0], 0);
       update_view(buf);
-
-      CACHED_VALUE_ACK(reference);
     }
     break;
   case DISPLAY_STATE_SHOW_TIP_TYPE:
     if (CACHED_VALUE_NEEDS_REDRAW(tip_type, st7789_force_redraw)) {
-      update_view(tip_txt[CACHED_VALUE_GET(tip_type)]);
-
-      CACHED_VALUE_ACK(tip_type);
+      update_view(tip_txt[CACHED_VALUE_GET_ACK(tip_type)]);
     }
     break;
   case DISPLAY_STATE_SHOW_REED_STATE:
     if (CACHED_VALUE_NEEDS_REDRAW(reed_state, st7789_force_redraw)) {
-      update_view(reed_txt[CACHED_VALUE_GET(reed_state)]);
-      CACHED_VALUE_ACK(reed_state);
+      update_view(reed_txt[CACHED_VALUE_GET_ACK(reed_state)]);
     }
     break;
   case DISPLAY_STATE_SHOW_FREQUENCY:
     if (CACHED_VALUE_NEEDS_REDRAW(main_period, st7789_force_redraw)) {
-      int freq = (int)((1000.0f / 2.0f) / (float)CACHED_VALUE_GET(main_period));
-      int written = snprint_int(buf, sizeof(buf), freq, CHAR_SPACE[0], 0);
+      int main_period = CACHED_VALUE_GET_ACK(main_period);
+      int main_frequency = (int)((1000.0f / 2.0f) / (float)main_period);
+      int written = snprint_int(buf, sizeof(buf), main_frequency, CHAR_SPACE[0], 0);
       strncat(&buf[written], FREQUENCY_SUFFIX, sizeof(buf) - written - 1);
       update_view(buf);
-
-      CACHED_VALUE_ACK(main_period);
     }
     break;
   case DISPLAY_STATE_SHOW_TC_1_READING:
     if (CACHED_VALUE_NEEDS_REDRAW(tc_right_temperature, st7789_force_redraw)) {
-      print_temperature(buf, sizeof(buf), CACHED_VALUE_GET(tc_right_temperature), true, true);
+      print_temperature(buf, sizeof(buf), CACHED_VALUE_GET_ACK(tc_right_temperature), true, true, ' ');
       update_view(buf);
-
-      CACHED_VALUE_ACK(tc_right_temperature);
     }
     break;
   case DISPLAY_STATE_SHOW_TC_2_READING:
     if (CACHED_VALUE_NEEDS_REDRAW(tc_left_temperature, st7789_force_redraw)) {
-      print_temperature(buf, sizeof(buf), CACHED_VALUE_GET(tc_left_temperature), true, true);
+      print_temperature(buf, sizeof(buf), CACHED_VALUE_GET_ACK(tc_left_temperature), true, true, ' ');
       update_view(buf);
-
-      CACHED_VALUE_ACK(tc_left_temperature);
     }
     break;
   case DISPLAY_STATE_SHOW_PWM_1_READING:
     if (CACHED_VALUE_NEEDS_REDRAW(right_duty, st7789_force_redraw)) {
-      snprint_int(buf, sizeof(buf), CACHED_VALUE_GET(right_duty), CHAR_SPACE[0], 0);
+      snprint_int(buf, sizeof(buf), CACHED_VALUE_GET_ACK(right_duty), CHAR_SPACE[0], 0);
       update_view(buf);
-
-      CACHED_VALUE_ACK(right_duty);
     }
     break;
   case DISPLAY_STATE_SHOW_PWM_2_READING:
     if (CACHED_VALUE_NEEDS_REDRAW(left_duty, st7789_force_redraw)) {
-      snprint_int(buf, sizeof(buf), CACHED_VALUE_GET(left_duty), CHAR_SPACE[0], 0);
+      snprint_int(buf, sizeof(buf), CACHED_VALUE_GET_ACK(left_duty), CHAR_SPACE[0], 0);
       update_view(buf);
-
-      CACHED_VALUE_ACK(left_duty);
     }
     break;
   case DISPLAY_STATE_ADJ_IDLE_DUTY:
     if (CACHED_VALUE_NEEDS_REDRAW(idle_duty, st7789_force_redraw)) {
-      if (CACHED_VALUE_GET(idle_duty) == 0)
+      int idle_duty = CACHED_VALUE_GET_ACK(idle_duty);
+      if (idle_duty == 0)
         update_view(OFF_TXT);
       else {
-        snprint_int(buf, sizeof(buf), CACHED_VALUE_GET(idle_duty), CHAR_SPACE[0], 0);
+        snprint_int(buf, sizeof(buf), idle_duty, CHAR_SPACE[0], 0);
         update_view(buf);
       }
-
-      CACHED_VALUE_ACK(idle_duty);
     }
     break;
   case DISPLAY_STATE_ADJ_MAX_DUTY:
     if (CACHED_VALUE_NEEDS_REDRAW(max_duty, st7789_force_redraw)) {
-      snprint_int(buf, sizeof(buf), CACHED_VALUE_GET(max_duty), CHAR_SPACE[0], 0);
+      snprint_int(buf, sizeof(buf), CACHED_VALUE_GET_ACK(max_duty), CHAR_SPACE[0], 0);
       update_view(buf);
-
-      CACHED_VALUE_ACK(max_duty);
     }
     break;
   case DISPLAY_STATE_ADJ_POOR:
     if (CACHED_VALUE_NEEDS_REDRAW(poor_mode, st7789_force_redraw)) {
-      update_view(CACHED_VALUE_GET(poor_mode) ? ON_TXT : OFF_TXT);
-
-      CACHED_VALUE_ACK(poor_mode);
+      update_view(CACHED_VALUE_GET_ACK(poor_mode) ? ON_TXT : OFF_TXT);
     }
     break;
   case DISPLAY_STATE_SHOW_FW_VERSION:
