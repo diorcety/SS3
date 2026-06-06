@@ -197,9 +197,9 @@ CACHED_VALUE_DEF(DiagMenu, diag_menu, 0);
 
 static int main_period_acc;
 static int right_temperature_acc;
-static int right_temperature_filtred;
+static int right_temperature_filtered;
 static int left_temperature_acc;
-static int left_temperature_filtred;
+static int left_temperature_filtered;
 static uint32_t previous_temperature_update;
 
 /*********************************************************************************************************************
@@ -335,8 +335,8 @@ void display_init(void) {
 
   main_period_acc = 0;
   right_temperature_acc = left_temperature_acc = 0;
-  right_temperature_filtred = 0;
-  left_temperature_filtred = 0;
+  right_temperature_filtered = 0;
+  left_temperature_filtered = 0;
 
   previous_temperature_update = systick_get();
 }
@@ -352,7 +352,7 @@ static void display_state_event(Event event) {
 void display_loop(void) {
   if (new_acquisition) {
     IIR_FILTER_ADD(DISPLAY_MAIN_PERIOD_IIR_WINDOW, main_period_acc, main_period);
-    int main_period_acc_filtred = IIR_FILTER_GET(DISPLAY_MAIN_PERIOD_IIR_WINDOW, main_period_acc);
+    int main_period_acc_filtered = IIR_FILTER_GET(DISPLAY_MAIN_PERIOD_IIR_WINDOW, main_period_acc);
 
     if (tip_has_right()) {
       IIR_FILTER_ADD(DISPLAY_RIGHT_TEMPERATURE_IIR_WINDOW, right_temperature_acc, right_temperature);
@@ -365,16 +365,16 @@ void display_loop(void) {
       IIR_FILTER_ADD(DISPLAY_LEFT_TEMPERATURE_IIR_WINDOW, left_temperature_acc, kty_temperature);
     }
 
-    // Get filtred value
-    int tmp_right_temperature_filtred = IIR_FILTER_GET(DISPLAY_RIGHT_TEMPERATURE_IIR_WINDOW, right_temperature_acc);
-    int tmp_left_temperature_filtred = IIR_FILTER_GET(DISPLAY_LEFT_TEMPERATURE_IIR_WINDOW, left_temperature_acc);
+    // Get filtered value
+    int tmp_right_temperature_filtered = IIR_FILTER_GET(DISPLAY_RIGHT_TEMPERATURE_IIR_WINDOW, right_temperature_acc);
+    int tmp_left_temperature_filtered = IIR_FILTER_GET(DISPLAY_LEFT_TEMPERATURE_IIR_WINDOW, left_temperature_acc);
 
     // Only update above threshold or after some delay: avoid flikering
-    if (ABS(tmp_right_temperature_filtred - right_temperature_filtred) >= DISPLAY_TEMPERATURE_SLOW_THRESHOLD_DEG ||
-        ABS(tmp_left_temperature_filtred - left_temperature_filtred) >= DISPLAY_TEMPERATURE_SLOW_THRESHOLD_DEG ||
+    if (ABS(tmp_right_temperature_filtered - right_temperature_filtered) >= DISPLAY_TEMPERATURE_SLOW_THRESHOLD_DEG ||
+        ABS(tmp_left_temperature_filtered - left_temperature_filtered) >= DISPLAY_TEMPERATURE_SLOW_THRESHOLD_DEG ||
         systick_elapsed(previous_temperature_update, DISPLAY_TEMPERATURE_SLOW_UPDATE_MS)) {
-      right_temperature_filtred = tmp_right_temperature_filtred;
-      left_temperature_filtred = tmp_left_temperature_filtred;
+      right_temperature_filtered = tmp_right_temperature_filtered;
+      left_temperature_filtered = tmp_left_temperature_filtered;
       previous_temperature_update = systick_get();
     }
 
@@ -387,8 +387,8 @@ void display_loop(void) {
     CACHED_VALUE_SET(heat_state, heat_state);
     CACHED_VALUE_SET(right_duty, right_duty);
     CACHED_VALUE_SET(left_duty, left_duty);
-    CACHED_VALUE_SET(right_temperature, right_temperature_filtred);
-    CACHED_VALUE_SET(left_temperature, left_temperature_filtred);
+    CACHED_VALUE_SET(right_temperature, right_temperature_filtered);
+    CACHED_VALUE_SET(left_temperature, left_temperature_filtered);
     CACHED_VALUE_SET(heat_setpoint, heat_setpoint);
     CACHED_VALUE_SET(setback, setback);
     CACHED_VALUE_SET(setback_delay, setback_delay);
@@ -403,7 +403,7 @@ void display_loop(void) {
     CACHED_VALUE_SET(idle_duty, idle_duty);
     CACHED_VALUE_SET(max_duty, max_duty);
     CACHED_VALUE_SET(poor_mode, poor_mode);
-    CACHED_VALUE_SET(main_period, main_period_acc_filtred);
+    CACHED_VALUE_SET(main_period, main_period_acc_filtered);
   }
 
   display_state_event(button_get_event());

@@ -104,24 +104,24 @@ void acquisition_init(void) {
 
 static void acquisition_compute(void) {
 
-  uint16_t filtred_value, compensated_value;
+  uint16_t filtered_value, compensated_value;
 
   //
   // KTY/TC2
   //
 #ifdef ACQ_MEDIAN
   MEDIAN_FILTER_INSERT(TC2_MEDIAN_FILTER, tc2_median_filter, raw_values[ADC_CHANNEL_TC2]);
-  if (!MEDIAN_FILTER_MEDIAN(TC2_MEDIAN_FILTER, tc2_median_filter, filtred_value, true)) {
+  if (!MEDIAN_FILTER_MEDIAN(TC2_MEDIAN_FILTER, tc2_median_filter, filtered_value, true)) {
     ERROR_HANDLER();
   }
 #else
   IIR_FILTER_ADD(TC2_IIR_WINDOW, tc2_acc, raw_values[ADC_CHANNEL_TC2]);
-  filtred_value = IIR_FILTER_GET(TC2_IIR_WINDOW, tc2_acc);
+  filtered_value = IIR_FILTER_GET(TC2_IIR_WINDOW, tc2_acc);
 #endif
 
   // TC2 is isometric: not compensed
   // -> Supply voltage is the same that ADC VREF+
-  kty_value = interpolate2d_u16_f32(&kty_inter_table, filtred_value);
+  kty_value = interpolate2d_u16_f32(&kty_inter_table, filtered_value);
   kty_temperature = (!poor_mode) ? ROUND(int, kty_value) : KTY_FALLBACK;
 
   //
@@ -129,33 +129,33 @@ static void acquisition_compute(void) {
   //
 #ifdef ACQ_MEDIAN
   MEDIAN_FILTER_INSERT(TC1_MEDIAN_FILTER, tc1_median_filter, raw_values[ADC_CHANNEL_TC1]);
-  if (!MEDIAN_FILTER_MEDIAN(TC1_MEDIAN_FILTER, tc1_median_filter, filtred_value, true)) {
+  if (!MEDIAN_FILTER_MEDIAN(TC1_MEDIAN_FILTER, tc1_median_filter, filtered_value, true)) {
     ERROR_HANDLER();
   }
 #else
   IIR_FILTER_ADD(TC1_IIR_WINDOW, tc1_acc, raw_values[ADC_CHANNEL_TC1]);
-  filtred_value = IIR_FILTER_GET(TC1_IIR_WINDOW, tc1_acc);
+  filtered_value = IIR_FILTER_GET(TC1_IIR_WINDOW, tc1_acc);
 #endif
 
   // TC1 use VDD: not compensed
-  reed_value = filtred_value;
+  reed_value = filtered_value;
 
   //
   // LEFT TEMP/TC2A
   //
 #ifdef ACQ_MEDIAN
   MEDIAN_FILTER_INSERT(TC2A_MEDIAN_FILTER, tc2a_median_filter, raw_values[ADC_CHANNEL_TC2A]);
-  if (!MEDIAN_FILTER_MEDIAN(TC2A_MEDIAN_FILTER, tc2a_median_filter, filtred_value, true)) {
+  if (!MEDIAN_FILTER_MEDIAN(TC2A_MEDIAN_FILTER, tc2a_median_filter, filtered_value, true)) {
     ERROR_HANDLER();
   }
 #else
   IIR_FILTER_ADD(TC2A_IIR_WINDOW, tc2a_acc, raw_values[ADC_CHANNEL_TC2A]);
-  filtred_value = IIR_FILTER_GET(TC2A_IIR_WINDOW, tc2a_acc);
+  filtered_value = IIR_FILTER_GET(TC2A_IIR_WINDOW, tc2a_acc);
 #endif
 
   // We need to compensate the amplified values regarding the real voltage reference.
   // -> If real voltage reference is bigger, the adc value will be lower: TC is not related to voltage reference.
-  compensated_value = (uint16_t)MIN(((int)filtred_value * (int)reference) / (int)2500, (int)ADC_MAX);
+  compensated_value = (uint16_t)MIN(((int)filtered_value * (int)reference) / (int)2500, (int)ADC_MAX);
 
   // Final temperature is interpolated TC value plus KTY value.
   tc_left_temperature = interpolate2d_u16_f32(&tc_inter_table, compensated_value);
@@ -166,17 +166,17 @@ static void acquisition_compute(void) {
   //
 #ifdef ACQ_MEDIAN
   MEDIAN_FILTER_INSERT(TC1A_MEDIAN_FILTER, tc1a_median_filter, raw_values[ADC_CHANNEL_TC1A]);
-  if (!MEDIAN_FILTER_MEDIAN(TC1A_MEDIAN_FILTER, tc1a_median_filter, filtred_value, true)) {
+  if (!MEDIAN_FILTER_MEDIAN(TC1A_MEDIAN_FILTER, tc1a_median_filter, filtered_value, true)) {
     ERROR_HANDLER();
   }
 #else
   IIR_FILTER_ADD(TC1A_IIR_WINDOW, tc1a_acc, raw_values[ADC_CHANNEL_TC1A]);
-  filtred_value = IIR_FILTER_GET(TC1A_IIR_WINDOW, tc1a_acc);
+  filtered_value = IIR_FILTER_GET(TC1A_IIR_WINDOW, tc1a_acc);
 #endif
 
   // We need to compensate the amplified values regarding the real voltage reference.
   // -> If real voltage reference is bigger, the adc value will be lower: TC is not related to voltage reference.
-  compensated_value = (uint16_t)MIN(((int)filtred_value * (int)reference) / (int)2500, (int)ADC_MAX);
+  compensated_value = (uint16_t)MIN(((int)filtered_value * (int)reference) / (int)2500, (int)ADC_MAX);
 
   // Final temperature is interpolated TC value plus KTY value.
   tc_right_temperature = interpolate2d_u16_f32(&tc_inter_table, compensated_value);
