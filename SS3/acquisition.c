@@ -129,7 +129,8 @@ static void acquisition_compute(void) {
   //
 #ifdef ACQ_MEDIAN
   MEDIAN_FILTER_INSERT(TC1_MEDIAN_FILTER, tc1_median_filter, raw_values[ADC_CHANNEL_TC1]);
-  if (!MEDIAN_FILTER_MEDIAN(TC1_MEDIAN_FILTER, tc1_median_filter, filtered_value, true)) {
+  // Don't mean the median value: can result in transient invalid value
+  if (!MEDIAN_FILTER_MEDIAN(TC1_MEDIAN_FILTER, tc1_median_filter, filtered_value, false)) {
     ERROR_HANDLER();
   }
 #else

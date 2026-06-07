@@ -56,6 +56,9 @@ _Static_assert((REED_NC_VALUE - REED_WMRT_VALUE_MAX) > 0, "Not enough room betwe
 TipType tip_type;
 ReedState reed_state;
 
+static TipType previous_tip_type;
+static ReedState previous_reed_state;
+
 /*********************************************************************************************************************
  *                                                                                                                   *
  *                                                 FUNCTIONS                                                         *
@@ -65,8 +68,8 @@ ReedState reed_state;
 static inline int reed_in_range(int value, int min, int max) { return value > min && value < max; }
 
 void tip_init(void) {
-  tip_type = TIP_TYPE_NC;
-  reed_state = REED_STATE_OPENED;
+  tip_type = previous_tip_type = TIP_TYPE_NC;
+  reed_state = previous_reed_state = REED_STATE_OPENED;
 }
 
 void tip_loop(void) {
@@ -74,27 +77,39 @@ void tip_loop(void) {
     return;
   }
 
+  TipType current_tip_type = previous_tip_type;
+  ReedState current_reed_state = previous_reed_state;
+
   /* Check */
   if (reed_value < REED_CLOSED_VALUE) {
     if (poor_mode) {
-      tip_type = TIP_TYPE_WMRP;
-      reed_state = REED_STATE_OPENED;
+      current_tip_type = TIP_TYPE_WMRP;
+      current_reed_state = REED_STATE_OPENED;
     } else if (tip_type == TIP_TYPE_NC) {
-      reed_state = REED_STATE_CLOSED;
+      current_reed_state = REED_STATE_CLOSED;
     } else {
-      reed_state = REED_STATE_CLOSED;
+      current_reed_state = REED_STATE_CLOSED;
     }
   } else if (reed_in_range(reed_value, REED_WXUP_VALUE_MIN, REED_WXUP_VALUE_MAX)) {
-    tip_type = TIP_TYPE_WXUP;
-    reed_state = REED_STATE_OPENED;
+    current_tip_type = TIP_TYPE_WXUP;
+    current_reed_state = REED_STATE_OPENED;
   } else if (reed_in_range(reed_value, REED_WMRP_VALUE_MIN, REED_WMRP_VALUE_MAX)) {
-    tip_type = TIP_TYPE_WMRP;
-    reed_state = REED_STATE_OPENED;
+    current_tip_type = TIP_TYPE_WMRP;
+    current_reed_state = REED_STATE_OPENED;
   } else if (reed_in_range(reed_value, REED_WMRT_VALUE_MIN, REED_WMRT_VALUE_MAX)) {
-    tip_type = TIP_TYPE_WMRT;
-    reed_state = REED_STATE_OPENED;
+    current_tip_type = TIP_TYPE_WMRT;
+    current_reed_state = REED_STATE_OPENED;
   } else if (reed_value > REED_NC_VALUE) {
-    tip_type = TIP_TYPE_NC;
-    reed_state = REED_STATE_OPENED;
+    current_tip_type = TIP_TYPE_NC;
+    current_reed_state = REED_STATE_OPENED;
   }
+
+  // Debounce a transient state. Exemple: reed opening/closing during a measure
+  if (previous_tip_type == current_tip_type && previous_reed_state == current_reed_state) {
+    tip_type = current_tip_type;
+    reed_state = current_reed_state;
+  }
+
+  previous_tip_type = current_tip_type;
+  previous_reed_state = current_reed_state;
 }
