@@ -317,6 +317,12 @@ static void update_menu_diag_display(DiagMenu diag_menu) {
 }
 
 static void update_display(void) {
+  bool update_heat_state = CACHED_VALUE_NEEDS_REDRAW(heat_state, seg7_force_refresh);
+  HeatState heat_state = CACHED_VALUE_GET_ACK(heat_state);
+  bool update_tip_type = CACHED_VALUE_NEEDS_REDRAW(tip_type, seg7_force_refresh);
+  TipType tip_type = CACHED_VALUE_GET_ACK(tip_type);
+  bool update_setpoint_change_timer = tick_timer_elapsed(&current_setpoint_change_timer);
+
   seg7_force_refresh = false;
   if (CACHED_VALUE_NEEDS_REDRAW(display_state, false)) {
     seg7_force_refresh = true;
@@ -334,7 +340,7 @@ static void update_display(void) {
   switch (display_state) {
   case DISPLAY_STATE_MAIN:
     if (heat_state == HEAT_STATE_STANDBY) {
-      if (seg7_force_refresh) {
+      if (update_heat_state) {
         display_text(stby);
       }
     } else if (heat_state == HEAT_STATE_ERROR) {
@@ -349,21 +355,22 @@ static void update_display(void) {
           display[3] = _SPACE;
         }
       }
-    } else if (tick_timer_is_running(&current_setpoint_change_timer, true)) {
+    } else if (tick_timer_is_running(&current_setpoint_change_timer, false)) {
       display_number(temp_unit(), heat_setpoint, true);
     } else {
-      TipType tip_type = CACHED_VALUE_GET(tip_type);
       if (tip_type == TIP_TYPE_NC) {
-        if (seg7_force_refresh) {
+        if (seg7_force_refresh || update_heat_state || update_tip_type || update_setpoint_change_timer) {
           display_text(nc);
         }
       } else if (tip_type != TIP_TYPE_WMRT) {
-        if (CACHED_VALUE_NEEDS_REDRAW(right_temperature, seg7_force_refresh)) {
+        if (CACHED_VALUE_NEEDS_REDRAW(right_temperature, seg7_force_refresh) || update_heat_state || update_tip_type ||
+            update_setpoint_change_timer) {
           display_number(temp_unit(), CACHED_VALUE_GET_ACK(right_temperature), true);
         }
       } else {
         if (CACHED_VALUE_NEEDS_REDRAW(right_temperature, seg7_force_refresh) ||
-            CACHED_VALUE_NEEDS_REDRAW(left_temperature, seg7_force_refresh)) {
+            CACHED_VALUE_NEEDS_REDRAW(left_temperature, seg7_force_refresh) || update_heat_state || update_tip_type ||
+            update_setpoint_change_timer) {
           int temperature = (CACHED_VALUE_GET_ACK(right_temperature) + CACHED_VALUE_GET_ACK(left_temperature)) / 2;
 
           display_number(temp_unit(), temperature, true);
