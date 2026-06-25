@@ -1,0 +1,158 @@
+(footprint "REED_SWITCH_PLASTIC"
+	(version 20241229)
+	(generator "pcbnew")
+	(generator_version "9.0")
+	(layer "F.Cu")
+	(descr "Reed Switch - Insulated Case - PTH\n\nA reed switch is a magnetically-actuated switch. When the device is exposed to a magnetic field, the two ferrous materials inside the switch pull together and the switch closes.\n\nhttps://cdn.sparkfun.com/datasheets/Dev/LilyPad/RS-01C.jpg Datasheet (RS-01C)")
+	(property "Reference" "REF**"
+		(at 0 -1.778 0)
+		(unlocked yes)
+		(layer "F.SilkS")
+		(uuid "c190cbc5-e942-4f1d-a019-6140daa5aace")
+		(effects
+			(font
+				(size 0.48768 0.48768)
+				(thickness 0.12192)
+			)
+			(justify bottom)
+		)
+	)
+	(property "Value" "REED_SWITCH_PLASTIC"
+		(at 0 1.778 0)
+		(unlocked yes)
+		(layer "F.Fab")
+		(uuid "370edfa9-45f0-4ca3-b7b0-b0ca886b2b62")
+		(effects
+			(font
+				(size 0.48768 0.48768)
+				(thickness 0.12192)
+			)
+			(justify top)
+		)
+	)
+	(property "Datasheet" ""
+		(at 0 0 0)
+		(layer "F.Fab")
+		(hide yes)
+		(uuid "99523b0a-b70a-4b35-8acb-3d317b1813bb")
+		(effects
+			(font
+				(size 1.27 1.27)
+				(thickness 0.15)
+			)
+		)
+	)
+	(property "Description" ""
+		(at 0 0 0)
+		(layer "F.Fab")
+		(hide yes)
+		(uuid "13a6faf7-2d1a-43dc-8b67-a519648bbe12")
+		(effects
+			(font
+				(size 1.27 1.27)
+				(thickness 0.15)
+			)
+		)
+	)
+	(fp_line
+		(start -7.5 -1.65)
+		(end 7.5 -1.65)
+		(stroke
+			(width 0.2032)
+			(type solid)
+		)
+		(layer "F.SilkS")
+		(uuid "88034c3d-a093-4e6e-9408-962fc97cc789")
+	)
+	(fp_line
+		(start -7.5 0)
+		(end -7.72 0)
+		(stroke
+			(width 0.2032)
+			(type solid)
+		)
+		(layer "F.SilkS")
+		(uuid "91db9609-e97e-493a-85d4-f562c8adb73c")
+	)
+	(fp_line
+		(start -7.5 0)
+		(end -7.5 -1.65)
+		(stroke
+			(width 0.2032)
+			(type solid)
+		)
+		(layer "F.SilkS")
+		(uuid "fc156ed0-73db-4e26-9ff8-057c2456801b")
+	)
+	(fp_line
+		(start -7.5 1.65)
+		(end -7.5 0)
+		(stroke
+			(width 0.2032)
+			(type solid)
+		)
+		(layer "F.SilkS")
+		(uuid "fb8372b0-0429-4776-99e1-7a9076ba70c1")
+	)
+	(fp_line
+		(start -7.5 1.65)
+		(end 7.5 1.65)
+		(stroke
+			(width 0.2032)
+			(type solid)
+		)
+		(layer "F.SilkS")
+		(uuid "9775ade0-ccd6-445f-9358-5287fc73eb90")
+	)
+	(fp_line
+		(start 7.5 -1.65)
+		(end 7.5 0)
+		(stroke
+			(width 0.2032)
+			(type solid)
+		)
+		(layer "F.SilkS")
+		(uuid "83605ad3-7685-4f3b-b727-682e75e15994")
+	)
+	(fp_line
+		(start 7.5 0)
+		(end 7.5 1.65)
+		(stroke
+			(width 0.2032)
+			(type solid)
+		)
+		(layer "F.SilkS")
+		(uuid "9b6557ad-a540-46d9-bd73-b7275d47e605")
+	)
+	(fp_line
+		(start 7.5 0)
+		(end 7.72 0)
+		(stroke
+			(width 0.2032)
+			(type solid)
+		)
+		(layer "F.SilkS")
+		(uuid "731a426f-b658-4d42-8675-58dd1275c628")
+	)
+	(pad "P$1" thru_hole circle
+		(at -8.89 0)
+		(size 1.8796 1.8796)
+		(drill 1.016)
+		(layers "*.Cu" "*.Mask")
+		(remove_unused_layers no)
+		(solder_mask_margin 0)
+		(thermal_bridge_angle 0)
+		(uuid "04e3c983-f6e9-4eff-b512-11aaca4b3599")
+	)
+	(pad "P$2" thru_hole circle
+		(at 8.89 0)
+		(size 1.8796 1.8796)
+		(drill 1.016)
+		(layers "*.Cu" "*.Mask")
+		(remove_unused_layers no)
+		(solder_mask_margin 0)
+		(thermal_bridge_angle 0)
+		(uuid "7e7c9127-aeba-4ec6-8872-360e63aa6d77")
+	)
+	(embedded_fonts no)
+)

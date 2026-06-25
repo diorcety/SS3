@@ -1,0 +1,4 @@
+(fp_lib_table
+  (version 7)
+  (lib (name "wmrt_handle")(type "KiCad")(uri "$(KIPRJMOD)/wmrt_handle.pretty")(options "")(descr ""))
+)

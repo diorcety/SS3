@@ -1,0 +1,4 @@
+(fp_lib_table
+  (version 7)
+  (lib (name "handle-V2")(type "KiCad")(uri "$(KIPRJMOD)/handle-V2.pretty")(options "")(descr ""))
+)

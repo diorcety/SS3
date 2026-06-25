@@ -1,0 +1,4 @@
+(sym_lib_table
+  (version 0)
+  (lib (name "wmrt_handle-eagle-import")(type "KiCad")(uri "${KIPRJMOD}/wmrt_handle-eagle-import.kicad_sym")(options "")(descr ""))
+)

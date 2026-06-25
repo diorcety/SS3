@@ -1,0 +1,37 @@
+*******************************************************
+* Taiwan Semiconductor_
+* SMBCJ36CA
+* 1500W, 36V Transient Voltage Suppressor 
+* Date: 2023-11-26
+*******************************************************
+*The model describes the characteristics of typical devices and is subject to change without notice. 		*
+*SPICE model can be used for evaluating device performance, but it cannot reflect the real device 		*
+*performance under any kind of conditions, nor to replace bread boarding for final verification. 		*
+*TSC does not assume any warranty or liability whatever arising from their use. TSC does not assume 		*
+*any warranty or liability for the values and functions of the SPICE model. The simulation results of 		*
+*the SPICE model are to the best of our knowledge correct. However, users are fully responsible to verify	*
+* and validate these results under the operating conditions and its application. TSC will not bear the 		*
+*responsibility arising out of or in connection with any malfunction of the simulation model. In any kind 	*
+*of cases, the current datasheet information is the design guideline and the only actual performance 		*
+*specification. SPICE model provided by TSC is not warranted by TSC as completely and comprehensively 		*
+*representing all the specifications and operating characteristics of the semiconductor product.		*
+*
+****************************************************************************************************************
+.subckt SMBJ36CA 1 2
+d1 11 1 SMBJ36A
+d2 11 2 SMBJ36A
+.MODEL SMBJ36A D
++ IS=77.854E-9
++ N=1.9716
++ RS=4.3406E-3
++ IKF=.70221
++ CJO=213.26E-12
++ M=.36462
++ VJ=.52236
++ ISR=10.010E-21
++ NR=4.9950
++ BV=40
++ IBV=1E-6
++ TT=2.4663E-6
+.ends
+*******************************************************
