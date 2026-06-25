@@ -1,6 +1,0 @@
-[submodule "lvgl"]
-	path = lvgl/lvgl
-	url = https://github.com/lvgl/lvgl.git
-[submodule "ugfx/ugfx"]
-	path = ugfx/ugfx
-	url = https://git.ugfx.io/ugfx/ugfx.git
