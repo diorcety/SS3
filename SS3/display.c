@@ -369,7 +369,7 @@ void display_loop(void) {
     int tmp_right_temperature_filtered = IIR_FILTER_GET(DISPLAY_RIGHT_TEMPERATURE_IIR_WINDOW, right_temperature_acc);
     int tmp_left_temperature_filtered = IIR_FILTER_GET(DISPLAY_LEFT_TEMPERATURE_IIR_WINDOW, left_temperature_acc);
 
-    // Only update above threshold or after some delay: avoid flikering
+    // Only update above threshold or after some delay: avoid flickering
     if (ABS(tmp_right_temperature_filtered - right_temperature_filtered) >= DISPLAY_TEMPERATURE_SLOW_THRESHOLD_DEG ||
         ABS(tmp_left_temperature_filtered - left_temperature_filtered) >= DISPLAY_TEMPERATURE_SLOW_THRESHOLD_DEG ||
         systick_elapsed(previous_temperature_update, DISPLAY_TEMPERATURE_SLOW_UPDATE_MS)) {

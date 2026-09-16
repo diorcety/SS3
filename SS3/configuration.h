@@ -11,7 +11,7 @@
 
 static const int CONFIGURATION_SAVE_DELAY = 5000;
 
-// Assign some 'factory default' values to use when run for the first time
+// Assign some 'factory default' values to use when running for the first time
 // These are also used if any of the parameters stored in eeprom are outside
 // of valid range
 static const int SETPOINT_DEFAULT = 240;

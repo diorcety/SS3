@@ -88,7 +88,7 @@ int main(void) {
   DL_GPIO_disableOutput(Other_PORT, Other_REED_PULLUP_PIN);
   DL_OPA_setOutputPinState(SecondVRef_INST, OA_CFG_OUTPIN_DISABLED);
 
-  // Initialize SysTickTimer: Don't use cortex systick based on MCLK.
+  // Initialize SysTickTimer: Don't use Cortex systick based on MCLK.
   // The imprecision of PLL leads to incorrect values
   NVIC_ClearPendingIRQ(SysTickTimer_INST_INT_IRQN);
   NVIC_EnableIRQ(SysTickTimer_INST_INT_IRQN);

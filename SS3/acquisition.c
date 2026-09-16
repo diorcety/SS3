@@ -119,7 +119,7 @@ static void acquisition_compute(void) {
   filtered_value = IIR_FILTER_GET(TC2_IIR_WINDOW, tc2_acc);
 #endif
 
-  // TC2 is isometric: not compensed
+  // TC2 is isometric: not compensated
   // -> Supply voltage is the same that ADC VREF+
   kty_value = interpolate2d_u16_f32(&kty_inter_table, filtered_value);
   kty_temperature = (!poor_mode) ? ROUND(int, kty_value) : KTY_FALLBACK;
@@ -138,7 +138,7 @@ static void acquisition_compute(void) {
   filtered_value = IIR_FILTER_GET(TC1_IIR_WINDOW, tc1_acc);
 #endif
 
-  // TC1 use VDD: not compensed
+  // TC1 use VDD: not compensated
   reed_value = filtered_value;
 
   //

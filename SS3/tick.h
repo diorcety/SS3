@@ -42,4 +42,4 @@ uint32_t tick_timer_stop(volatile tick_timer_t *t);
 bool tick_timer_elapsed(volatile tick_timer_t *t);
 bool tick_timer_is_running(volatile tick_timer_t *t, bool update);
 
-#endif // UTILS_H_
+#endif // TICK_H_
