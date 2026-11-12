@@ -1,5 +1,6 @@
 #include "heat.h"
 
+#include "acquisition.h"
 #include "configuration.h"
 #include "iron.h"
 #include "tick.h"
@@ -12,6 +13,8 @@
  *********************************************************************************************************************/
 
 static const int HEAT_NC_ERROR_TIMEOUT = 2000;
+static const int HEAT_KTY_MAX_TEMPERATURE = 70;  // Handle temperature (°C) above which we stop heating
+static const int HEAT_KTY_MIN_TEMPERATURE = -20; // Handle temperature (°C) below which we stop heating
 
 /*********************************************************************************************************************
  *                                                                                                                   *
@@ -52,6 +55,17 @@ void heat_loop(void) {
 
   if (tip_type != TIP_TYPE_NC) {
     tick_timer_start(&nc_timer, HEAT_NC_ERROR_TIMEOUT, true);
+  }
+
+  // Fail-safe: KTY is in series with TC2 (left thermocouple). An open TC2 (cable or tip wire) makes the KTY read
+  // very hot (clamped at 150°C) while the left TC may read cold, leading to a heat runaway on the left side.
+  // A real over-temperature of the handle is also a reason to stop.
+  // A TC2 short to GND bypasses the KTY: it reads very cold (clamped at -50°C) and, being the cold junction of both
+  // thermocouples, makes both sides read too cold, leading to a heat runaway.
+  // Only checked with a tip: without one, TC2 is open and the KTY reading is meaningless.
+  if (tip_type != TIP_TYPE_NC &&
+      (kty_temperature > HEAT_KTY_MAX_TEMPERATURE || kty_temperature < HEAT_KTY_MIN_TEMPERATURE)) {
+    heat_error();
   }
 
   if (heat_state != HEAT_STATE_ERROR) {
@@ -114,4 +128,3 @@ void heat_toggle(void) {
 }
 
 void heat_error(void) { heat_state = HEAT_STATE_ERROR; }
-
