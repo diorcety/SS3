@@ -368,6 +368,19 @@ if(NOT SIMULATION)
         $<TARGET_FILE:SS3>
         $<TARGET_FILE_DIR:SS3>/$<TARGET_FILE_BASE_NAME:SS3>.elf
     )
+
+    # MAIN flash only image (no NONMAIN, no EEPROM): a failed NONMAIN write can lock the device (factory reset
+    # required), so use this one for day-to-day flashing. HEX is used rather than ELF as objcopy keeps the NONMAIN
+    # program headers in an ELF, and some loaders (OpenOCD) program by segment.
+    add_custom_command(TARGET SS3 POST_BUILD COMMAND
+        ${TI_ARM_OBJCOPY}
+        -O ihex
+        --remove-section=.TI.phattrs
+        --remove-section=.BCRConfig
+        --remove-section=.BSLConfig
+        $<TARGET_FILE:SS3>
+        $<TARGET_FILE_DIR:SS3>/$<TARGET_FILE_BASE_NAME:SS3>_main.hex
+    )
 endif()
 
 # ----------------------------------------------------------------------------------------------------------------------
