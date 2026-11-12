@@ -21,6 +21,10 @@ static const int IRON_DIFF_FACTOR = 5;      // 1° diff == 5%
 static const int IRON_DIFF_FACTOR_BASE = 1; // 1° diff == 5%
 static const float TC_MAX_VOLTAGE = 1.0f;   // We NORMALLY should not get any voltage on TC
 static const int HEAT_SETPOINT_WINDOW = 64; // 0 to 240 reached in 392 samples: about 4 seconds on 50HZ
+static const int IRON_COLD_TIMEOUT = 1500;    // ms of heating allowed with the TC in the cold zone
+static const float IRON_COLD_DELTA = 20.0f;   // TC delta (°C above cold junction) defining the cold zone.
+                                              // Worst case while heating: setpoint 100°C with KTY at 70°C
+                                              // (KTY limit) → delta ~30°C
 
 /*********************************************************************************************************************
  *                                                                                                                   *
@@ -38,6 +42,8 @@ static int right_acc;
 static tick_timer_t tip_type_change_timer;
 static TipType previous_tip_type;
 static int heat_setpoint_counter;
+static uint32_t right_cold_timestamp;
+static uint32_t left_cold_timestamp;
 
 static volatile uint32_t current_sw_state;
 static volatile uint32_t next_sw_state;
@@ -54,6 +60,17 @@ static int iron_temperature_to_heat(int temperature) {
   int temp_diff = MAX(0, setpoint - temperature);
   int max_heat = IRON_HEAT_BASE * max_duty / DUTY_BASE;
   return MIN(temp_diff * IRON_DIFF_FACTOR / IRON_DIFF_FACTOR_BASE, max_heat);
+}
+
+// Fail-safe: while heating, the TC must be above the cold junction (setpoint >= SETPOINT_MIN). A TC reading staying
+// at the cold junction level means the TC doesn't see the heater (e.g. TC1 shorted to GND, seen as a closed reed, or
+// TC shorted in the tip). Covers the start (IRON_COLD_TIMEOUT grace) and a disconnection while heating.
+static void iron_check_cold(uint32_t *pTimestamp, float tc_delta) {
+  if (tc_delta >= IRON_COLD_DELTA) {
+    *pTimestamp = systick_get();
+  } else if (systick_elapsed(*pTimestamp, IRON_COLD_TIMEOUT)) {
+    heat_error();
+  }
 }
 
 static bool iron_can_heat(void) {
@@ -90,6 +107,7 @@ void iron_init(void) {
   left_acc = right_acc = 0;
   previous_tip_type = tip_type;
   heat_setpoint_counter = 0;
+  right_cold_timestamp = left_cold_timestamp = systick_get();
 
   right_heat = left_heat = 0;
   right_duty = left_duty = 0;
@@ -157,17 +175,22 @@ void iron_loop(void) {
       right_acc = 0;
       right_heat = false;
     }
+    iron_check_cold(&right_cold_timestamp, tc_right_temperature);
 
     if (tip_type == TIP_TYPE_WMRT) {
       if (left_heat) {
         switches |= Switches_L12_PIN;
       }
+      iron_check_cold(&left_cold_timestamp, tc_left_temperature);
     } else {
+      left_cold_timestamp = systick_get();
       left_duty = 0;
       left_acc = 0;
       left_heat = false;
     }
   } else {
+    right_cold_timestamp = left_cold_timestamp = systick_get();
+
     right_acc = 0;
     right_duty = 0;
     right_heat = false;
