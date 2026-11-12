@@ -52,7 +52,7 @@ static const int IDLE_DUTY_MAX = 75;
 
 static const int DUTY_BASE = 100;
 
-static const int FW_VERSION = 1;
+static const int FW_VERSION = 2;
 
 static const int KTY_FALLBACK = 30;
 
